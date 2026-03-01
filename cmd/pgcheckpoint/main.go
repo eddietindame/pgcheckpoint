@@ -24,7 +24,7 @@ func main() {
 	flag.Parse()
 
 	if *list {
-		files, err := checkpoint.GetCheckpointFilenames()
+		files, err := checkpoint.ListCheckpointFilenames()
 		if err != nil {
 			fmt.Println(err)
 		}

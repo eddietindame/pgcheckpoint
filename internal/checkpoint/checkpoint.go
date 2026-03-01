@@ -31,16 +31,6 @@ func getOrCreateCheckpointDir() (string, error) {
 	return path, nil
 }
 
-// getCheckpointFilePath returns the full path for a checkpoint file.
-func getCheckpointFilePath(filename string) (string, error) {
-	dir, err := getOrCreateCheckpointDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(dir, filename), nil
-}
-
 // ParseCheckpointNumber extracts the number from the end of a checkpoint file filename.
 func parseCheckpointNumber(filename string) (int, error) {
 	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint"), ".sql")
@@ -55,13 +45,8 @@ func parseCheckpointNumber(filename string) (int, error) {
 	return n, nil
 }
 
-// getLatestCheckpoint finds the checkpoint with the highest number and returns its name and number.
-func getLatestCheckpoint() (string, int, error) {
-	files, err := GetCheckpointFilenames()
-	if err != nil {
-		return "", 0, err
-	}
-
+// getLatestCheckpoint returns the latest checkpoint in a list of checkpoint file names.
+func getLatestCheckpoint(files []string) (string, int, error) {
 	largest := 0
 	for _, file := range files {
 		n, err := parseCheckpointNumber(file)
@@ -73,28 +58,29 @@ func getLatestCheckpoint() (string, int, error) {
 		}
 	}
 
-	return fmt.Sprintf("checkpoint_%d", largest), largest, nil
+	return fmt.Sprintf("checkpoint_%d.sql", largest), largest, nil
 }
 
-// getNextCheckpointFilePath returns the file path for the next checkpoint (latest + 1).
-func getNextCheckpointFilePath() (string, error) {
-	_, largest, err := getLatestCheckpoint()
-	if err != nil {
-		return "", err
-	}
-
+// getNextCheckpointFilePath returns the file path for the next checkpoint (latest + 1) in a dir.
+func getNextCheckpointFilePath(largest int, dir string) (string, error) {
 	filename := fmt.Sprintf("checkpoint_%d", largest+1)
-	return getCheckpointFilePath(filename)
+	return filepath.Join(dir, filename), nil
 }
 
-// GetCheckpointFilenames returns a list of all checkpoint filenames in the checkpoint directory.
-func GetCheckpointFilenames() ([]string, error) {
-	path, err := getOrCreateCheckpointDir()
-	if err != nil {
-		return []string{}, err
+// checkpointsToDelete returns a list of files eligable to be deleted from a list of existing files.
+func checkpointsToDelete(filenames []string, latest int) []string {
+	var toDelete []string
+	for i, file := range filenames {
+		if i < latest-1 {
+			toDelete = append(toDelete, file)
+		}
 	}
+	return toDelete
+}
 
-	entries, err := os.ReadDir(path)
+// GetCheckpointFilenames returns a list of all checkpoint filenames in the provided dir.
+func getCheckpointFilenames(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return []string{}, fmt.Errorf("Error reading checkpoint dir: %w", err)
 	}
@@ -107,9 +93,39 @@ func GetCheckpointFilenames() ([]string, error) {
 	return files, nil
 }
 
+// ListCheckpointFilenames returns a list of all checkpoint filenames in the checkpoint directory.
+func ListCheckpointFilenames() ([]string, error) {
+	dir, err := getOrCreateCheckpointDir()
+	if err != nil {
+		return []string{}, err
+	}
+
+	files, err := getCheckpointFilenames(dir)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return files, nil
+}
+
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
 func CreateCheckpoint(filename string, port int) (string, error) {
-	path, err := getNextCheckpointFilePath()
+	dir, err := getOrCreateCheckpointDir()
+	if err != nil {
+		return "", err
+	}
+
+	files, err := getCheckpointFilenames(dir)
+	if err != nil {
+		return "", err
+	}
+
+	_, largest, err := getLatestCheckpoint(files)
+	if err != nil {
+		return "", err
+	}
+
+	path, err := getNextCheckpointFilePath(largest, dir)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +141,12 @@ func CreateCheckpoint(filename string, port int) (string, error) {
 
 // PruneCheckpoints deletes all checkpoints except the latest one, returning the number deleted.
 func PruneCheckpoints() (int, error) {
-	files, err := GetCheckpointFilenames()
+	dir, err := getOrCreateCheckpointDir()
+	if err != nil {
+		return 0, err
+	}
+
+	files, err := getCheckpointFilenames(dir)
 	if err != nil {
 		return 0, err
 	}
@@ -134,22 +155,17 @@ func PruneCheckpoints() (int, error) {
 		return 0, nil
 	}
 
-	_, n, err := getLatestCheckpoint()
+	_, latest, err := getLatestCheckpoint(files)
 	if err != nil {
 		return 0, err
 	}
 
-	dir, err := getOrCreateCheckpointDir()
-	if err != nil {
-		return 0, err
-	}
+	toDelete := checkpointsToDelete(files, latest)
 
 	count := 0
-	for m, file := range files {
-		if m < n {
-			os.Remove(filepath.Join(dir, file))
-			count++
-		}
+	for _, file := range toDelete {
+		os.Remove(filepath.Join(dir, file))
+		count++
 	}
 
 	return count, nil
