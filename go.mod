@@ -1,4 +1,4 @@
-module pgcheckpoint
+module github.com/eddietindame/pgcheckpoint
 
 go 1.25.3
 

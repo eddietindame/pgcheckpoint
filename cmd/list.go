@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +14,11 @@ func init() {
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List checkpoints.",
-	Long:  ``,
+	Long: `List all checkpoint files stored under the active profile's checkpoints
+directory. Each checkpoint is displayed by filename, sorted by creation order.
+
+If no checkpoints exist for the current profile, a message is displayed
+indicating that none were found.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		files, err := checkpoint.ListCheckpointFilenames(profile)
 

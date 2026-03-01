@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"pgcheckpoint/internal/checkpoint"
-	"pgcheckpoint/internal/db"
+	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/db"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,7 +16,12 @@ func init() {
 var restoreCmd = &cobra.Command{
 	Use:   "restore",
 	Short: "Restore database to latest checkpoint.",
-	Long:  ``,
+	Long: `Restore the configured PostgreSQL database to the most recent checkpoint
+by executing the checkpoint SQL file using psql. The latest checkpoint
+for the active profile is automatically selected.
+
+This will overwrite the current state of the database with the contents
+of the checkpoint file.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)

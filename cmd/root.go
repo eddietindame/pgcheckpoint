@@ -32,7 +32,14 @@ func viperKeyToFlagName(key string) string {
 var rootCmd = &cobra.Command{
 	Use:   "pgcheckpoint",
 	Short: "A tool for creating and restoring from Postgres database checkpoints.",
-	Long:  ``,
+	Long: `pgcheckpoint is a CLI tool for creating and restoring PostgreSQL database
+checkpoints using pg_dump and psql.
+
+It supports global and project-level configuration files, config profiles,
+and can be customised with flags or environment variables. When called
+without a subcommand, it defaults to creating a new checkpoint.
+
+Requires pg_dump and psql to be available in your PATH.`,
 	RunE:  createCmd.RunE,
 }
 

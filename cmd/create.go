@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"pgcheckpoint/internal/checkpoint"
-	"pgcheckpoint/internal/db"
+	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/db"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,7 +16,12 @@ func init() {
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new checkpoint.",
-	Long:  ``,
+	Long: `Create a new database checkpoint by running pg_dump against the configured
+PostgreSQL database. The resulting SQL file is saved to the checkpoints
+directory under the active profile.
+
+The checkpoint filename can be controlled with the --filename flag.
+This is the default command when pgcheckpoint is called without a subcommand.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)

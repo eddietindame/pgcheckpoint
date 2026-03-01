@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +14,11 @@ func init() {
 var pruneCmd = &cobra.Command{
 	Use:   "prune",
 	Short: "Remove all but the latest checkpoint.",
-	Long:  ``,
+	Long: `Remove all checkpoint files for the active profile except the most recent
+one. This frees up disk space while keeping the latest checkpoint available
+for restore.
+
+Displays the number of checkpoints that were removed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)
