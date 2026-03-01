@@ -33,18 +33,21 @@ pgcheckpoint list
 # Restore database to latest checkpoint
 pgcheckpoint restore
 
+# Restore a specific checkpoint
+pgcheckpoint restore checkpoint_2.sql
+
 # Remove all but the latest checkpoint
 pgcheckpoint prune
 ```
 
 ### Commands
 
-| Command   | Description                                  |
-| --------- | -------------------------------------------- |
-| `create`  | Create a new checkpoint using `pg_dump`      |
-| `list`    | List all checkpoints for the active profile  |
-| `restore` | Restore the database to the latest checkpoint |
-| `prune`   | Remove all but the latest checkpoint         |
+| Command   | Description                                              |
+| --------- | -------------------------------------------------------- |
+| `create`  | Create a new checkpoint using `pg_dump`                  |
+| `list`    | List all checkpoints for the active profile              |
+| `restore` | Restore the database to a checkpoint (latest by default) |
+| `prune`   | Remove all but the latest checkpoint                     |
 
 Running `pgcheckpoint` without a subcommand defaults to `create`.
 

@@ -14,14 +14,16 @@ func init() {
 }
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore",
-	Short: "Restore database to latest checkpoint.",
-	Long: `Restore the configured PostgreSQL database to the most recent checkpoint
-by executing the checkpoint SQL file using psql. The latest checkpoint
-for the active profile is automatically selected.
+	Use:   "restore [checkpoint]",
+	Short: "Restore database to a checkpoint.",
+	Long: `Restore the configured PostgreSQL database to a checkpoint by executing
+the checkpoint SQL file using psql. If a checkpoint filename is provided
+as an argument (e.g. checkpoint_2.sql), that checkpoint is restored.
+Otherwise the latest checkpoint for the active profile is used.
 
 This will overwrite the current state of the database with the contents
 of the checkpoint file.`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)
@@ -37,7 +39,12 @@ of the checkpoint file.`,
 		)
 		fmt.Println("Database url:", url)
 
-		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile)
+		var target string
+		if len(args) > 0 {
+			target = args[0]
+		}
+
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile, target)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

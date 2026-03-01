@@ -183,20 +183,29 @@ func PruneCheckpoints(baseDir, profile string) (int, error) {
 	return count, nil
 }
 
-func RestoreCheckpoint(url, baseDir, profile string) (string, string, error) {
+// RestoreCheckpoint restores the configured database to the state stored in the provided target checkpoint. Defaults to latest checkpoint.
+func RestoreCheckpoint(url, baseDir, profile, target string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
 	}
 
-	files, err := getCheckpointFilenames(dir)
-	if err != nil {
-		return "", "", err
-	}
-
-	latest, _, err := getLatestCheckpoint(files)
-	if err != nil {
-		return "", "", err
+	var filename string
+	if target != "" {
+		path := getCheckpointFilePath(dir, target)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return "", "", fmt.Errorf("checkpoint %q not found", target)
+		}
+		filename = target
+	} else {
+		files, err := getCheckpointFilenames(dir)
+		if err != nil {
+			return "", "", err
+		}
+		filename, _, err = getLatestCheckpoint(files)
+		if err != nil {
+			return "", "", err
+		}
 	}
 
 	cmd := exec.Command("psql", url, "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
@@ -206,12 +215,12 @@ func RestoreCheckpoint(url, baseDir, profile string) (string, string, error) {
 		return "", "", fmt.Errorf("%w: %s", err, out)
 	}
 
-	cmd = exec.Command("psql", "--dbname", url, "--file", getCheckpointFilePath(dir, latest))
+	cmd = exec.Command("psql", "--dbname", url, "--file", getCheckpointFilePath(dir, filename))
 	out, err = cmd.CombinedOutput()
 
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %s", err, out)
 	}
 
-	return string(out), latest, nil
+	return string(out), filename, nil
 }
