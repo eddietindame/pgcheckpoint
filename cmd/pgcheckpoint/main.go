@@ -3,17 +3,27 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/exec"
 	"pgcheckpoint/internal/checkpoint"
 )
 
-type defaults struct {
+var defaultValues = struct {
 	port     int
 	filename string
-}
-
-var defaultValues = defaults{
+}{
 	port:     5432,
 	filename: "checkpoint_1.sql",
+}
+
+func checkDependencies() error {
+	deps := []string{"pg_dump", "psql"}
+	for _, dep := range deps {
+		if _, err := exec.LookPath(dep); err != nil {
+			return fmt.Errorf("%s not found in PATH", dep)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -36,10 +46,16 @@ func main() {
 		return
 	}
 
+	if err := checkDependencies(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
 	if *prune {
 		count, err := checkpoint.PruneCheckpoints()
 		if err != nil {
 			fmt.Printf("Error pruning checkpoints: %v\n", err)
+			os.Exit(1)
 		}
 		fmt.Printf("Checkpoints pruned: %d\n", count)
 		return
@@ -50,6 +66,7 @@ func main() {
 	out, err := checkpoint.CreateCheckpoint(*fileName, *port)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 	fmt.Println(out)
 }
