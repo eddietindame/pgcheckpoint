@@ -20,7 +20,7 @@ directory. Each checkpoint is displayed by filename, sorted by creation order.
 If no checkpoints exist for the current profile, a message is displayed
 indicating that none were found.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		files, err := checkpoint.ListCheckpointFilenames(profile)
+		files, err := checkpoint.ListCheckpointFilenames(getCheckpointDir(), profile)
 
 		if err != nil {
 			return fmt.Errorf("Error listing checkpoints: %w", err)

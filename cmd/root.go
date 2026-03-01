@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,13 @@ func checkDependencies() error {
 		}
 	}
 	return nil
+}
+
+func getCheckpointDir() string {
+	if dir := viper.GetString("checkpoint_dir"); dir != "" {
+		return dir
+	}
+	return checkpoint.DefaultCheckpointDir()
 }
 
 func viperKeyToFlagName(key string) string {
@@ -63,6 +71,7 @@ var (
 	dbHost         string
 	dbName         string
 	dbSSLMode      string
+	checkpointDir  string
 )
 
 func init() {
@@ -80,6 +89,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&dbHost, "db-host", "localhost", "Database host")
 	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", "db", "Database name")
 	rootCmd.PersistentFlags().StringVar(&dbSSLMode, "db-sslmode", "disable", "SSL mode")
+	rootCmd.PersistentFlags().StringVar(&checkpointDir, "checkpoint-dir", "", "Checkpoint storage directory (default ~/.pgcheckpoint/checkpoints)")
 
 	// Bind flags to viper keys so config file values become flag defaults
 	viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("port"))
@@ -88,6 +98,7 @@ func init() {
 	viper.BindPFlag("db_host", rootCmd.PersistentFlags().Lookup("db-host"))
 	viper.BindPFlag("db_name", rootCmd.PersistentFlags().Lookup("db-name"))
 	viper.BindPFlag("db_sslmode", rootCmd.PersistentFlags().Lookup("db-sslmode"))
+	viper.BindPFlag("checkpoint_dir", rootCmd.PersistentFlags().Lookup("checkpoint-dir"))
 }
 
 func initConfig() {
@@ -100,6 +111,7 @@ func initConfig() {
 	} else {
 		viper.SetConfigName(".pgcheckpoint")
 		viper.AddConfigPath(home)                                           // ~/.pgcheckpoint.yml
+		viper.AddConfigPath(filepath.Join(home, ".pgcheckpoint"))           // ~/.pgcheckpoint/.pgcheckpoint.yml
 		viper.AddConfigPath(filepath.Join(home, ".config"))                 // ~/.config/.pgcheckpoint.yml
 		viper.AddConfigPath(filepath.Join(home, ".config", "pgcheckpoint")) // ~/.config/pgcheckpoint/.pgcheckpoint.yml
 	}

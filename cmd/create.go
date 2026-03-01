@@ -37,7 +37,7 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 		)
 		fmt.Println("Database url:", url)
 
-		out, path, err := checkpoint.CreateCheckpoint(filename, url, profile)
+		out, path, err := checkpoint.CreateCheckpoint(filename, url, getCheckpointDir(), profile)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

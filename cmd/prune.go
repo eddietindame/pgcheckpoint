@@ -24,7 +24,7 @@ Displays the number of checkpoints that were removed.`,
 			return fmt.Errorf("error: %v\n", err)
 		}
 
-		count, err := checkpoint.PruneCheckpoints(profile)
+		count, err := checkpoint.PruneCheckpoints(getCheckpointDir(), profile)
 
 		if err != nil {
 			return fmt.Errorf("Error pruning checkpoints: %w", err)

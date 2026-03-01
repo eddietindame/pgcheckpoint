@@ -37,7 +37,7 @@ of the checkpoint file.`,
 		)
 		fmt.Println("Database url:", url)
 
-		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, profile)
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

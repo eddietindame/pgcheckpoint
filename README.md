@@ -58,6 +58,7 @@ Running `pgcheckpoint` without a subcommand defaults to `create`.
     --db-host string        Database host (default "localhost")
     --db-name string        Database name (default "db")
     --db-sslmode string     SSL mode (default "disable")
+    --checkpoint-dir string Checkpoint storage directory (default "~/.pgcheckpoint/checkpoints")
 -c, --config string         Global config file path
 -j, --project-config string Project config file path
     --profile string        Config profile to use (default "default")
@@ -79,6 +80,7 @@ pgcheckpoint uses [Viper](https://github.com/spf13/viper) for configuration. Set
 **Global config** (searched in order):
 
 - `~/.pgcheckpoint.yaml`
+- `~/.pgcheckpoint/.pgcheckpoint.yaml`
 - `~/.config/.pgcheckpoint.yaml`
 - `~/.config/pgcheckpoint/.pgcheckpoint.yaml`
 
@@ -95,6 +97,7 @@ db_host: localhost
 db_port: 5432
 db_name: myapp_dev
 db_sslmode: disable
+checkpoint_dir: /path/to/checkpoints
 
 staging:
   db_user: staging_user
@@ -112,13 +115,15 @@ pgcheckpoint create --profile staging
 
 ### Checkpoint storage
 
-Checkpoints are stored in your system's temporary directory:
+Checkpoints are stored in your home directory by default:
 
 ```
-{TempDir}/pgcheckpoint/{profile}/checkpoint_N.sql
+~/.pgcheckpoint/checkpoints/{profile}/checkpoint_N.sql
 ```
 
-For example: `/tmp/pgcheckpoint/default/checkpoint_1.sql`
+For example: `~/.pgcheckpoint/checkpoints/default/checkpoint_1.sql`
+
+This can be overridden with the `--checkpoint-dir` flag or `checkpoint_dir` config key.
 
 ## Development
 

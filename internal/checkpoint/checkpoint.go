@@ -9,9 +9,18 @@ import (
 	"strings"
 )
 
+// DefaultCheckpointDir returns the default checkpoint base directory (~/.pgcheckpoint/checkpoints).
+func DefaultCheckpointDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+	return filepath.Join(home, ".pgcheckpoint", "checkpoints")
+}
+
 // getOrCreateCheckpointDir returns the checkpoint directory path, creating it if it doesn't exist.
-func getOrCreateCheckpointDir(profile string) (string, error) {
-	path := filepath.Join(os.TempDir(), "pgcheckpoint", profile)
+func getOrCreateCheckpointDir(baseDir, profile string) (string, error) {
+	path := filepath.Join(baseDir, profile)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		fmt.Printf("Path %s does not exist, creating path...\n", path)
 		err := os.MkdirAll(path, 0755)
@@ -98,8 +107,8 @@ func getCheckpointFilenames(dir string) ([]string, error) {
 }
 
 // ListCheckpointFilenames returns a list of all checkpoint filenames in the checkpoint directory.
-func ListCheckpointFilenames(profile string) ([]string, error) {
-	dir, err := getOrCreateCheckpointDir(profile)
+func ListCheckpointFilenames(baseDir, profile string) ([]string, error) {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return []string{}, err
 	}
@@ -113,8 +122,8 @@ func ListCheckpointFilenames(profile string) ([]string, error) {
 }
 
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
-func CreateCheckpoint(filename, url, profile string) (string, string, error) {
-	dir, err := getOrCreateCheckpointDir(profile)
+func CreateCheckpoint(filename, url, baseDir, profile string) (string, string, error) {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
 	}
@@ -140,8 +149,8 @@ func CreateCheckpoint(filename, url, profile string) (string, string, error) {
 }
 
 // PruneCheckpoints deletes all checkpoints except the latest one, returning the number deleted.
-func PruneCheckpoints(profile string) (int, error) {
-	dir, err := getOrCreateCheckpointDir(profile)
+func PruneCheckpoints(baseDir, profile string) (int, error) {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return 0, err
 	}
@@ -174,8 +183,8 @@ func PruneCheckpoints(profile string) (int, error) {
 	return count, nil
 }
 
-func RestoreCheckpoint(url, profile string) (string, string, error) {
-	dir, err := getOrCreateCheckpointDir(profile)
+func RestoreCheckpoint(url, baseDir, profile string) (string, string, error) {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
 	}
