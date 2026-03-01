@@ -20,7 +20,7 @@ var pruneCmd = &cobra.Command{
 			return fmt.Errorf("error: %v\n", err)
 		}
 
-		count, err := checkpoint.PruneCheckpoints()
+		count, err := checkpoint.PruneCheckpoints(profile)
 
 		if err != nil {
 			return fmt.Errorf("Error pruning checkpoints: %w", err)

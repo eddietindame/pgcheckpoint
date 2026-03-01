@@ -16,10 +16,14 @@ var listCmd = &cobra.Command{
 	Short: "List checkpoints.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		files, err := checkpoint.ListCheckpointFilenames()
+		files, err := checkpoint.ListCheckpointFilenames(profile)
 
 		if err != nil {
 			return fmt.Errorf("Error listing checkpoints: %w", err)
+		}
+
+		if len(files) == 0 {
+			fmt.Println("No checkpoints.")
 		}
 
 		for _, file := range files {

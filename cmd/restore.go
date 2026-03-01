@@ -32,14 +32,15 @@ var restoreCmd = &cobra.Command{
 		)
 		fmt.Println("Database url:", url)
 
-		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url)
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, profile)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}
 
-		fmt.Println()
-		fmt.Println(out)
+		if len(out) > 0 {
+			fmt.Printf("\n%s\n", out)
+		}
 		fmt.Println("Checkpoint restored:", restoredCheckpoint)
 		return nil
 	},

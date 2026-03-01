@@ -32,14 +32,15 @@ var createCmd = &cobra.Command{
 		)
 		fmt.Println("Database url:", url)
 
-		out, path, err := checkpoint.CreateCheckpoint(filename, url)
+		out, path, err := checkpoint.CreateCheckpoint(filename, url, profile)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}
 
-		fmt.Println()
-		fmt.Println(out)
+		if len(out) > 0 {
+			fmt.Printf("\n%s\n", out)
+		}
 		fmt.Println("Created checkpoint:", path)
 		return nil
 	},

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,6 +22,10 @@ func checkDependencies() error {
 		}
 	}
 	return nil
+}
+
+func viperKeyToFlagName(key string) string {
+	return strings.ReplaceAll(key, "_", "-")
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -43,6 +48,7 @@ func Execute() {
 var (
 	cfgFile        string
 	projectCfgFile string
+	profile        string
 	port           int
 	filename       string
 	dbUser         string
@@ -56,7 +62,8 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "global config file (default is $HOME/.pgcheckpoint.yaml)")
-	rootCmd.PersistentFlags().StringVarP(&projectCfgFile, "project-config", "pc", "", "config file (default is ./.pgcheckpoint.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&projectCfgFile, "project-config", "j", "", "config file (default is ./.pgcheckpoint.yaml)")
+	rootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "config profile to use")
 
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
 	rootCmd.PersistentFlags().StringVarP(&filename, "filename", "f", "checkpoint_1.sql", "Filename for checkpoint")
@@ -108,6 +115,19 @@ func initConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			cobra.CheckErr(fmt.Errorf("error reading project config: %w", err))
 		}
+	}
+
+	// Apply profile — only set values that weren't explicitly passed as flags
+	sub := viper.Sub(profile)
+	if sub != nil {
+		for _, key := range sub.AllKeys() {
+			flag := rootCmd.PersistentFlags().Lookup(viperKeyToFlagName(key))
+			if flag == nil || !flag.Changed {
+				viper.Set(key, sub.Get(key))
+			}
+		}
+	} else if profile != "default" {
+		cobra.CheckErr(fmt.Errorf("profile %q not found in config", profile))
 	}
 
 	viper.AutomaticEnv()
