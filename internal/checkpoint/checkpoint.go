@@ -9,11 +9,6 @@ import (
 	"strings"
 )
 
-// GetPgUrl builds a PostgreSQL connection string for the given port.
-func GetPgUrl(port int) string {
-	return fmt.Sprintf("postgresql://bertie_user_backend:bertie_password_backend@localhost:%d/bertie_db_backend?sslmode=disable", port)
-}
-
 // getOrCreateCheckpointDir returns the checkpoint directory path, creating it if it doesn't exist.
 func getOrCreateCheckpointDir() (string, error) {
 	path := filepath.Join(os.TempDir(), "pgcheckpoint")
@@ -118,7 +113,7 @@ func ListCheckpointFilenames() ([]string, error) {
 }
 
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
-func CreateCheckpoint(filename string, port int) (string, string, error) {
+func CreateCheckpoint(filename string, url string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir()
 	if err != nil {
 		return "", "", err
@@ -135,7 +130,7 @@ func CreateCheckpoint(filename string, port int) (string, string, error) {
 	}
 
 	path := getNextCheckpointFilePath(largest, dir)
-	cmd := exec.Command("pg_dump", "--dbname", GetPgUrl(port), "--file", path)
+	cmd := exec.Command("pg_dump", "--dbname", url, "--file", path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %s", err, out)
@@ -179,7 +174,7 @@ func PruneCheckpoints() (int, error) {
 	return count, nil
 }
 
-func RestoreCheckpoint(port int) (string, string, error) {
+func RestoreCheckpoint(url string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir()
 	if err != nil {
 		return "", "", err
@@ -195,14 +190,14 @@ func RestoreCheckpoint(port int) (string, string, error) {
 		return "", "", err
 	}
 
-	cmd := exec.Command("psql", GetPgUrl(port), "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+	cmd := exec.Command("psql", url, "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %s", err, out)
 	}
 
-	cmd = exec.Command("psql", "--dbname", GetPgUrl(port), "--file", getCheckpointFilePath(dir, latest))
+	cmd = exec.Command("psql", "--dbname", url, "--file", getCheckpointFilePath(dir, latest))
 	out, err = cmd.CombinedOutput()
 
 	if err != nil {
