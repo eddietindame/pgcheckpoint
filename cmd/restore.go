@@ -8,12 +8,12 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(restoreCmd)
 }
 
-var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new checkpoint.",
+var restoreCmd = &cobra.Command{
+	Use:   "restore",
+	Short: "Restore database to latest checkpoint.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
@@ -22,14 +22,14 @@ var createCmd = &cobra.Command{
 
 		fmt.Println("Database url:", checkpoint.GetPgUrl(port))
 
-		out, path, err := checkpoint.CreateCheckpoint(filename, port)
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(port)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}
 
 		fmt.Println(out)
-		fmt.Println("Created checkpoint:", path)
+		fmt.Println("Checkpoint restored:", restoredCheckpoint)
 		return nil
 	},
 }

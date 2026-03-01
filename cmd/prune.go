@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"pgcheckpoint/internal/checkpoint"
 
 	"github.com/spf13/cobra"
@@ -18,17 +17,16 @@ var pruneCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error: %v\n", err)
 		}
 
 		count, err := checkpoint.PruneCheckpoints()
 
 		if err != nil {
-			return fmt.Errorf("Error pruning checkpoints: %w\n", err)
+			return fmt.Errorf("Error pruning checkpoints: %w", err)
 		}
 
-		fmt.Printf("Checkpoints pruned: %d\n", count)
+		fmt.Println("Checkpoints pruned:", count)
 		return nil
 	},
 }

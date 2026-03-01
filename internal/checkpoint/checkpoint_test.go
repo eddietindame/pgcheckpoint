@@ -148,17 +148,14 @@ func TestGetNextCheckpointFilePath(t *testing.T) {
 		dir     string
 		want    string
 	}{
-		{"first", 0, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_1"},
-		{"third", 2, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_3"},
-		{"custom dir", 5, "/home/user/dumps", "/home/user/dumps/checkpoint_6"},
+		{"first", 0, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_1.sql"},
+		{"third", 2, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_3.sql"},
+		{"custom dir", 5, "/home/user/dumps", "/home/user/dumps/checkpoint_6.sql"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getNextCheckpointFilePath(tt.largest, tt.dir)
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
+			got := getNextCheckpointFilePath(tt.largest, tt.dir)
 			if got != tt.want {
 				t.Errorf("got %s, want %s", got, tt.want)
 			}

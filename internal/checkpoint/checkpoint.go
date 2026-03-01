@@ -61,10 +61,15 @@ func getLatestCheckpoint(files []string) (string, int, error) {
 	return fmt.Sprintf("checkpoint_%d.sql", largest), largest, nil
 }
 
+// getCheckpointFilePath returns the file path for a checkpoint in a dir.
+func getCheckpointFilePath(dir string, filename string) string {
+	return filepath.Join(dir, filename)
+}
+
 // getNextCheckpointFilePath returns the file path for the next checkpoint (latest + 1) in a dir.
-func getNextCheckpointFilePath(largest int, dir string) (string, error) {
-	filename := fmt.Sprintf("checkpoint_%d", largest+1)
-	return filepath.Join(dir, filename), nil
+func getNextCheckpointFilePath(largest int, dir string) string {
+	filename := fmt.Sprintf("checkpoint_%d.sql", largest+1)
+	return getCheckpointFilePath(dir, filename)
 }
 
 // checkpointsToDelete returns a list of files eligable to be deleted from a list of existing files.
@@ -113,34 +118,30 @@ func ListCheckpointFilenames() ([]string, error) {
 }
 
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
-func CreateCheckpoint(filename string, port int) (string, error) {
+func CreateCheckpoint(filename string, port int) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	files, err := getCheckpointFilenames(dir)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	_, largest, err := getLatestCheckpoint(files)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	path, err := getNextCheckpointFilePath(largest, dir)
-	if err != nil {
-		return "", err
-	}
-
+	path := getNextCheckpointFilePath(largest, dir)
 	cmd := exec.Command("pg_dump", "--dbname", GetPgUrl(port), "--file", path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, out)
+		return "", "", fmt.Errorf("%w: %s", err, out)
 	}
 
-	return string(out), nil
+	return string(out), path, nil
 }
 
 // PruneCheckpoints deletes all checkpoints except the latest one, returning the number deleted.
@@ -171,9 +172,42 @@ func PruneCheckpoints() (int, error) {
 
 	count := 0
 	for _, file := range toDelete {
-		os.Remove(filepath.Join(dir, file))
+		os.Remove(getCheckpointFilePath(dir, file))
 		count++
 	}
 
 	return count, nil
+}
+
+func RestoreCheckpoint(port int) (string, string, error) {
+	dir, err := getOrCreateCheckpointDir()
+	if err != nil {
+		return "", "", err
+	}
+
+	files, err := getCheckpointFilenames(dir)
+	if err != nil {
+		return "", "", err
+	}
+
+	latest, _, err := getLatestCheckpoint(files)
+	if err != nil {
+		return "", "", err
+	}
+
+	cmd := exec.Command("psql", GetPgUrl(port), "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %s", err, out)
+	}
+
+	cmd = exec.Command("psql", "--dbname", GetPgUrl(port), "--file", getCheckpointFilePath(dir, latest))
+	out, err = cmd.CombinedOutput()
+
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %s", err, out)
+	}
+
+	return string(out), latest, nil
 }

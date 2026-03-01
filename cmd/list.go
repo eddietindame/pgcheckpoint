@@ -19,7 +19,7 @@ var listCmd = &cobra.Command{
 		files, err := checkpoint.ListCheckpointFilenames()
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Error listing checkpoints: %w", err)
 		}
 
 		for _, file := range files {
