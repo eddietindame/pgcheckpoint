@@ -89,24 +89,44 @@ func TestCheckpointsToDelete(t *testing.T) {
 		filenamesInput []string
 		latestInput    int
 		want           []string
+		wantErr        bool
 	}{
 		{
 			"basic",
 			[]string{"checkpoint_1.sql", "checkpoint_2.sql", "checkpoint_3.sql"},
 			3,
 			[]string{"checkpoint_1.sql", "checkpoint_2.sql"},
+			false,
 		},
 		{
 			"single",
 			[]string{"checkpoint_1.sql"},
 			1,
 			[]string{},
+			false,
+		},
+		{
+			"weird order",
+			[]string{"checkpoint_1.sql", "checkpoint_3.sql"},
+			3,
+			[]string{"checkpoint_1.sql"},
+			false,
+		},
+		{
+			"error",
+			[]string{"checkpoint_1.sql", "checkpointerror.sql"},
+			3,
+			[]string{},
+			true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := checkpointsToDelete(tt.filenamesInput, tt.latestInput)
+			got, err := checkpointsToDelete(tt.filenamesInput, tt.latestInput)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error: %v", err)
+			}
 			if len(got) != len(tt.want) {
 				t.Errorf("got %v, want %v", got, tt.want)
 				return

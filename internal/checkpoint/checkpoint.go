@@ -68,14 +68,18 @@ func getNextCheckpointFilePath(largest int, dir string) (string, error) {
 }
 
 // checkpointsToDelete returns a list of files eligable to be deleted from a list of existing files.
-func checkpointsToDelete(filenames []string, latest int) []string {
+func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
 	var toDelete []string
-	for i, file := range filenames {
-		if i < latest-1 {
+	for _, file := range filenames {
+		n, err := parseCheckpointNumber(file)
+		if err == nil && n < latest {
 			toDelete = append(toDelete, file)
+		} else if err != nil {
+			return []string{}, err
 		}
 	}
-	return toDelete
+
+	return toDelete, nil
 }
 
 // GetCheckpointFilenames returns a list of all checkpoint filenames in the provided dir.
@@ -160,7 +164,10 @@ func PruneCheckpoints() (int, error) {
 		return 0, err
 	}
 
-	toDelete := checkpointsToDelete(files, latest)
+	toDelete, err := checkpointsToDelete(files, latest)
+	if err != nil {
+		return 0, err
+	}
 
 	count := 0
 	for _, file := range toDelete {
