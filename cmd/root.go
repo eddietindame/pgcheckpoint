@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,20 +41,23 @@ func Execute() {
 }
 
 var (
-	cfgFile    string
-	port       int
-	filename   string
-	dbUser     string
-	dbPassword string
-	dbHost     string
-	dbName     string
-	dbSSLMode  string
+	cfgFile        string
+	projectCfgFile string
+	port           int
+	filename       string
+	dbUser         string
+	dbPassword     string
+	dbHost         string
+	dbName         string
+	dbSSLMode      string
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.pgcheckpoint.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "global config file (default is $HOME/.pgcheckpoint.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&projectCfgFile, "project-config", "pc", "", "config file (default is ./.pgcheckpoint.yaml)")
+
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
 	rootCmd.PersistentFlags().StringVarP(&filename, "filename", "f", "checkpoint_1.sql", "Filename for checkpoint")
 	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", "user", "Database user")
@@ -73,23 +77,38 @@ func init() {
 }
 
 func initConfig() {
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+
+	// Global config
 	if cfgFile != "" {
-		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory with name ".pgcheckpoint" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
 		viper.SetConfigName(".pgcheckpoint")
+		viper.AddConfigPath(home)                                           // ~/.pgcheckpoint.yml
+		viper.AddConfigPath(filepath.Join(home, ".config"))                 // ~/.config/.pgcheckpoint.yml
+		viper.AddConfigPath(filepath.Join(home, ".config", "pgcheckpoint")) // ~/.config/pgcheckpoint/.pgcheckpoint.yml
+	}
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			cobra.CheckErr(fmt.Errorf("error reading global config: %w", err))
+		}
+	}
+
+	// Project config (overrides global)
+	if projectCfgFile != "" {
+		viper.SetConfigFile(projectCfgFile)
+	} else {
+		viper.SetConfigName(".pgcheckpoint")
+		viper.AddConfigPath(".")
+	}
+
+	if err := viper.MergeInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			cobra.CheckErr(fmt.Errorf("error reading project config: %w", err))
+		}
 	}
 
 	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }
