@@ -204,6 +204,25 @@ func PruneCheckpoints(baseDir, profile string, mode NamingMode) (int, error) {
 	return count, nil
 }
 
+// DeleteCheckpoint removes a specific checkpoint file by name.
+func DeleteCheckpoint(baseDir, profile, target string) error {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
+	if err != nil {
+		return err
+	}
+
+	path := getCheckpointFilePath(dir, target)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return fmt.Errorf("checkpoint %q not found", target)
+	}
+
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("error deleting checkpoint: %w", err)
+	}
+
+	return nil
+}
+
 // RestoreCheckpoint restores the configured database to the state stored in the provided target
 // checkpoint. If no target is given, the latest checkpoint is used based on the mode.
 func RestoreCheckpoint(url, baseDir, profile, target string, mode NamingMode) (string, string, error) {

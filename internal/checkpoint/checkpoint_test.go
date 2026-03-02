@@ -1,6 +1,8 @@
 package checkpoint
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -130,6 +132,40 @@ func TestCheckpointsToDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteCheckpoint(t *testing.T) {
+	t.Run("deletes existing checkpoint", func(t *testing.T) {
+		dir := t.TempDir()
+		profile := "default"
+		profileDir := filepath.Join(dir, profile)
+		os.MkdirAll(profileDir, 0755)
+		os.WriteFile(filepath.Join(profileDir, "checkpoint_1.sql"), []byte("data"), 0644)
+		os.WriteFile(filepath.Join(profileDir, "checkpoint_2.sql"), []byte("data"), 0644)
+
+		err := DeleteCheckpoint(dir, profile, "checkpoint_1.sql")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_1.sql")); !os.IsNotExist(err) {
+			t.Error("expected checkpoint_1.sql to be deleted")
+		}
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_2.sql")); err != nil {
+			t.Error("expected checkpoint_2.sql to still exist")
+		}
+	})
+
+	t.Run("returns error for non-existent checkpoint", func(t *testing.T) {
+		dir := t.TempDir()
+		profile := "default"
+		os.MkdirAll(filepath.Join(dir, profile), 0755)
+
+		err := DeleteCheckpoint(dir, profile, "checkpoint_99.sql")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
 }
 
 func TestGetNextCheckpointFilePath(t *testing.T) {
