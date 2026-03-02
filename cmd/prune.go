@@ -19,8 +19,8 @@ one. This frees up disk space while keeping the latest checkpoint available
 for restore.
 
 Use --naming-mode to match the naming convention of your checkpoints
-(sequential or timestamp). Displays the number of checkpoints that were
-removed.`,
+(sequential, timestamp, compact, or unix). Displays the number of
+checkpoints that were removed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)

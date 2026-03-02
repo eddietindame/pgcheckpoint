@@ -49,8 +49,8 @@ checkpoints using pg_dump and psql.
 
 It supports global and project-level configuration files, config profiles,
 and can be customised with flags or environment variables. Checkpoints can
-be named sequentially (checkpoint_1.sql) or with timestamps
-(checkpoint_2026-03-02_15-30-45.sql) via the --naming-mode flag.
+be named sequentially, with timestamps, in compact RFC 3339 format, or
+with unix epoch seconds via the --naming-mode flag.
 
 When called without a subcommand, it defaults to creating a new checkpoint.
 
@@ -89,6 +89,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&projectCfgFile, "project-config", "j", "", "config file (default is ./.pgcheckpoint.yaml)")
 	rootCmd.PersistentFlags().StringVar(&profile, "profile", "default", "config profile to use")
 
+	rootCmd.PersistentFlags().StringVar(&checkpointDir, "checkpoint-dir", "", "Checkpoint storage directory (default ~/.pgcheckpoint/checkpoints)")
+	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential, timestamp, compact, or unix)")
+
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
 	rootCmd.PersistentFlags().StringVarP(&filename, "filename", "f", "checkpoint_1.sql", "Filename for checkpoint")
 	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", "user", "Database user")
@@ -97,8 +100,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&dbHost, "db-host", "localhost", "Database host")
 	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", "db", "Database name")
 	rootCmd.PersistentFlags().StringVar(&dbSSLMode, "db-sslmode", "disable", "SSL mode")
-	rootCmd.PersistentFlags().StringVar(&checkpointDir, "checkpoint-dir", "", "Checkpoint storage directory (default ~/.pgcheckpoint/checkpoints)")
-	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential or timestamp)")
 
 	// Bind flags to viper keys so config file values become flag defaults
 	viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("port"))

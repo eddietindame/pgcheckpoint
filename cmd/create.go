@@ -21,8 +21,8 @@ PostgreSQL database. The resulting SQL file is saved to the checkpoints
 directory under the active profile.
 
 The checkpoint filename can be controlled with the --filename flag.
-Use --naming-mode to choose between sequential (checkpoint_1.sql,
-checkpoint_2.sql) and timestamp (checkpoint_2026-03-02_15-30-45.sql) naming.
+Use --naming-mode to choose between sequential, timestamp, compact, or
+unix naming.
 This is the default command when pgcheckpoint is called without a subcommand.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {

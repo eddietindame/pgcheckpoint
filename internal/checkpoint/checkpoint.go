@@ -35,7 +35,7 @@ func getOrCreateCheckpointDir(baseDir, profile string) (string, error) {
 	return path, nil
 }
 
-// ParseCheckpointNumber extracts the number from the end of a checkpoint file filename.
+// parseCheckpointNumber extracts the number from the end of a checkpoint file filename.
 func parseCheckpointNumber(filename string) (int, error) {
 	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint"), ".sql")
 	intString := strings.TrimPrefix(suffix, "_")
@@ -91,7 +91,7 @@ func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
 	return toDelete, nil
 }
 
-// GetCheckpointFilenames returns a list of all checkpoint filenames in the provided dir.
+// getCheckpointFilenames returns a list of all checkpoint filenames in the provided dir.
 func getCheckpointFilenames(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -121,7 +121,8 @@ func ListCheckpointFilenames(baseDir, profile string) ([]string, error) {
 	return files, nil
 }
 
-// CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
+// CreateCheckpoint runs pg_dump to create a new checkpoint SQL file. The namingMode parameter
+// controls the checkpoint filename format (sequential, timestamp, compact, or unix).
 func CreateCheckpoint(filename, url, baseDir, profile, namingMode string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
@@ -129,8 +130,8 @@ func CreateCheckpoint(filename, url, baseDir, profile, namingMode string) (strin
 	}
 
 	var path string
-	if namingMode == "timestamp" {
-		path = getNextTimestampCheckpointFilePath(dir)
+	if namingMode == "timestamp" || namingMode == "compact" || namingMode == "unix" {
+		path = getNextTimestampCheckpointFilePath(dir, namingMode)
 	} else {
 		files, err := getCheckpointFilenames(dir)
 		if err != nil {
@@ -154,6 +155,7 @@ func CreateCheckpoint(filename, url, baseDir, profile, namingMode string) (strin
 }
 
 // PruneCheckpoints deletes all checkpoints except the latest one, returning the number deleted.
+// The namingMode parameter determines how checkpoint filenames are parsed to find the latest.
 func PruneCheckpoints(baseDir, profile, namingMode string) (int, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
@@ -170,12 +172,12 @@ func PruneCheckpoints(baseDir, profile, namingMode string) (int, error) {
 	}
 
 	var toDelete []string
-	if namingMode == "timestamp" {
-		_, latest, err := getLatestTimestampCheckpoint(files)
+	if namingMode == "timestamp" || namingMode == "compact" || namingMode == "unix" {
+		_, latest, err := getLatestTimestampCheckpoint(files, namingMode)
 		if err != nil {
 			return 0, err
 		}
-		toDelete, err = timestampCheckpointsToDelete(files, latest)
+		toDelete, err = timestampCheckpointsToDelete(files, latest, namingMode)
 		if err != nil {
 			return 0, err
 		}
@@ -199,7 +201,8 @@ func PruneCheckpoints(baseDir, profile, namingMode string) (int, error) {
 	return count, nil
 }
 
-// RestoreCheckpoint restores the configured database to the state stored in the provided target checkpoint. Defaults to latest checkpoint.
+// RestoreCheckpoint restores the configured database to the state stored in the provided target
+// checkpoint. If no target is given, the latest checkpoint is used based on the namingMode.
 func RestoreCheckpoint(url, baseDir, profile, target, namingMode string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
@@ -218,8 +221,8 @@ func RestoreCheckpoint(url, baseDir, profile, target, namingMode string) (string
 		if err != nil {
 			return "", "", err
 		}
-		if namingMode == "timestamp" {
-			filename, _, err = getLatestTimestampCheckpoint(files)
+		if namingMode == "timestamp" || namingMode == "compact" || namingMode == "unix" {
+			filename, _, err = getLatestTimestampCheckpoint(files, namingMode)
 		} else {
 			filename, _, err = getLatestCheckpoint(files)
 		}

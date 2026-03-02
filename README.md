@@ -62,7 +62,7 @@ Running `pgcheckpoint` without a subcommand defaults to `create`.
     --db-name string        Database name (default "db")
     --db-sslmode string     SSL mode (default "disable")
     --checkpoint-dir string Checkpoint storage directory (default "~/.pgcheckpoint/checkpoints")
-    --naming-mode string    Checkpoint naming mode: "sequential" or "timestamp" (default "sequential")
+    --naming-mode string    Checkpoint naming mode: sequential, timestamp, compact, or unix (default "sequential")
 -c, --config string         Global config file path
 -j, --project-config string Project config file path
     --profile string        Config profile to use (default "default")
@@ -134,18 +134,18 @@ This can be overridden with the `--checkpoint-dir` flag or `checkpoint_dir` conf
 
 The `--naming-mode` flag (or `naming_mode` config key) controls how checkpoint files are named:
 
-- **`sequential`** (default) — Files are numbered sequentially: `checkpoint_1.sql`, `checkpoint_2.sql`, etc.
-- **`timestamp`** — Files include a timestamp: `checkpoint_2026-03-02_15-30-45.sql`. Timestamps sort lexicographically and are human-readable.
+| Mode | Example filename | Description |
+| ------------ | ------------------------------------------ | ---------------------------------------- |
+| `sequential` | `checkpoint_1.sql` | Numbered sequentially (default) |
+| `timestamp` | `checkpoint_2026-03-02_15-30-45.sql` | Human-readable date and time |
+| `compact` | `checkpoint_20260302T153045.sql` | RFC 3339 compact (no separators) |
+| `unix` | `checkpoint_1740934245.sql` | Unix epoch seconds |
 
 ```sh
-# Create a timestamp-named checkpoint
+# Create checkpoints with different naming modes
 pgcheckpoint create --naming-mode timestamp
-
-# Restore latest timestamp checkpoint
-pgcheckpoint restore --naming-mode timestamp
-
-# Prune old timestamp checkpoints
-pgcheckpoint prune --naming-mode timestamp
+pgcheckpoint create --naming-mode compact
+pgcheckpoint create --naming-mode unix
 ```
 
 You can also set this in your config file:

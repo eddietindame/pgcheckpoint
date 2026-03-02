@@ -22,7 +22,7 @@ as an argument (e.g. checkpoint_2.sql), that checkpoint is restored.
 Otherwise the latest checkpoint for the active profile is used.
 
 Use --naming-mode to match the naming convention of your checkpoints
-(sequential or timestamp) when restoring the latest.
+(sequential, timestamp, compact, or unix) when restoring the latest.
 
 This will overwrite the current state of the database with the contents
 of the checkpoint file.`,
