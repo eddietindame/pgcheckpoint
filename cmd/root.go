@@ -32,6 +32,10 @@ func getCheckpointDir() string {
 	return checkpoint.DefaultCheckpointDir()
 }
 
+func getNamingMode() string {
+	return viper.GetString("naming_mode")
+}
+
 func viperKeyToFlagName(key string) string {
 	return strings.ReplaceAll(key, "_", "-")
 }
@@ -44,11 +48,14 @@ var rootCmd = &cobra.Command{
 checkpoints using pg_dump and psql.
 
 It supports global and project-level configuration files, config profiles,
-and can be customised with flags or environment variables. When called
-without a subcommand, it defaults to creating a new checkpoint.
+and can be customised with flags or environment variables. Checkpoints can
+be named sequentially (checkpoint_1.sql) or with timestamps
+(checkpoint_2026-03-02_15-30-45.sql) via the --naming-mode flag.
+
+When called without a subcommand, it defaults to creating a new checkpoint.
 
 Requires pg_dump and psql to be available in your PATH.`,
-	RunE:  createCmd.RunE,
+	RunE: createCmd.RunE,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -72,6 +79,7 @@ var (
 	dbName         string
 	dbSSLMode      string
 	checkpointDir  string
+	namingMode     string
 )
 
 func init() {
@@ -90,6 +98,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", "db", "Database name")
 	rootCmd.PersistentFlags().StringVar(&dbSSLMode, "db-sslmode", "disable", "SSL mode")
 	rootCmd.PersistentFlags().StringVar(&checkpointDir, "checkpoint-dir", "", "Checkpoint storage directory (default ~/.pgcheckpoint/checkpoints)")
+	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential or timestamp)")
 
 	// Bind flags to viper keys so config file values become flag defaults
 	viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("port"))
@@ -99,6 +108,7 @@ func init() {
 	viper.BindPFlag("db_name", rootCmd.PersistentFlags().Lookup("db-name"))
 	viper.BindPFlag("db_sslmode", rootCmd.PersistentFlags().Lookup("db-sslmode"))
 	viper.BindPFlag("checkpoint_dir", rootCmd.PersistentFlags().Lookup("checkpoint-dir"))
+	viper.BindPFlag("naming_mode", rootCmd.PersistentFlags().Lookup("naming-mode"))
 }
 
 func initConfig() {

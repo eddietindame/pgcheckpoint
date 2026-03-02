@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // DefaultCheckpointDir returns the default checkpoint base directory (~/.pgcheckpoint/checkpoints).
@@ -91,6 +92,56 @@ func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
 	return toDelete, nil
 }
 
+const timestampFormat = "2006-01-02_15-04-05"
+
+// parseCheckpointTimestamp extracts the timestamp from a checkpoint filename.
+func parseCheckpointTimestamp(filename string) (time.Time, error) {
+	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint_"), ".sql")
+	t, err := time.Parse(timestampFormat, suffix)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing checkpoint timestamp: %w", err)
+	}
+	return t, nil
+}
+
+// getLatestTimestampCheckpoint returns the checkpoint with the newest timestamp.
+func getLatestTimestampCheckpoint(files []string) (string, time.Time, error) {
+	var latest time.Time
+	var latestFile string
+	for _, file := range files {
+		t, err := parseCheckpointTimestamp(file)
+		if err != nil {
+			return "", time.Time{}, err
+		}
+		if t.After(latest) {
+			latest = t
+			latestFile = file
+		}
+	}
+	return latestFile, latest, nil
+}
+
+// getNextTimestampCheckpointFilePath generates a checkpoint path using the current time.
+func getNextTimestampCheckpointFilePath(dir string) string {
+	filename := fmt.Sprintf("checkpoint_%s.sql", time.Now().Format(timestampFormat))
+	return getCheckpointFilePath(dir, filename)
+}
+
+// timestampCheckpointsToDelete returns all checkpoint files except the one matching latest.
+func timestampCheckpointsToDelete(filenames []string, latest time.Time) ([]string, error) {
+	var toDelete []string
+	for _, file := range filenames {
+		t, err := parseCheckpointTimestamp(file)
+		if err != nil {
+			return nil, err
+		}
+		if !t.Equal(latest) {
+			toDelete = append(toDelete, file)
+		}
+	}
+	return toDelete, nil
+}
+
 // GetCheckpointFilenames returns a list of all checkpoint filenames in the provided dir.
 func getCheckpointFilenames(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
@@ -122,23 +173,28 @@ func ListCheckpointFilenames(baseDir, profile string) ([]string, error) {
 }
 
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file.
-func CreateCheckpoint(filename, url, baseDir, profile string) (string, string, error) {
+func CreateCheckpoint(filename, url, baseDir, profile, namingMode string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
 	}
 
-	files, err := getCheckpointFilenames(dir)
-	if err != nil {
-		return "", "", err
-	}
+	var path string
+	if namingMode == "timestamp" {
+		path = getNextTimestampCheckpointFilePath(dir)
+	} else {
+		files, err := getCheckpointFilenames(dir)
+		if err != nil {
+			return "", "", err
+		}
 
-	_, largest, err := getLatestCheckpoint(files)
-	if err != nil {
-		return "", "", err
-	}
+		_, largest, err := getLatestCheckpoint(files)
+		if err != nil {
+			return "", "", err
+		}
 
-	path := getNextCheckpointFilePath(largest, dir)
+		path = getNextCheckpointFilePath(largest, dir)
+	}
 	cmd := exec.Command("pg_dump", "--dbname", url, "--file", path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -149,7 +205,7 @@ func CreateCheckpoint(filename, url, baseDir, profile string) (string, string, e
 }
 
 // PruneCheckpoints deletes all checkpoints except the latest one, returning the number deleted.
-func PruneCheckpoints(baseDir, profile string) (int, error) {
+func PruneCheckpoints(baseDir, profile, namingMode string) (int, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return 0, err
@@ -160,18 +216,29 @@ func PruneCheckpoints(baseDir, profile string) (int, error) {
 		return 0, err
 	}
 
-	if len(files) == 1 {
+	if len(files) <= 1 {
 		return 0, nil
 	}
 
-	_, latest, err := getLatestCheckpoint(files)
-	if err != nil {
-		return 0, err
-	}
-
-	toDelete, err := checkpointsToDelete(files, latest)
-	if err != nil {
-		return 0, err
+	var toDelete []string
+	if namingMode == "timestamp" {
+		_, latest, err := getLatestTimestampCheckpoint(files)
+		if err != nil {
+			return 0, err
+		}
+		toDelete, err = timestampCheckpointsToDelete(files, latest)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		_, latest, err := getLatestCheckpoint(files)
+		if err != nil {
+			return 0, err
+		}
+		toDelete, err = checkpointsToDelete(files, latest)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	count := 0
@@ -184,7 +251,7 @@ func PruneCheckpoints(baseDir, profile string) (int, error) {
 }
 
 // RestoreCheckpoint restores the configured database to the state stored in the provided target checkpoint. Defaults to latest checkpoint.
-func RestoreCheckpoint(url, baseDir, profile, target string) (string, string, error) {
+func RestoreCheckpoint(url, baseDir, profile, target, namingMode string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
@@ -202,7 +269,11 @@ func RestoreCheckpoint(url, baseDir, profile, target string) (string, string, er
 		if err != nil {
 			return "", "", err
 		}
-		filename, _, err = getLatestCheckpoint(files)
+		if namingMode == "timestamp" {
+			filename, _, err = getLatestTimestampCheckpoint(files)
+		} else {
+			filename, _, err = getLatestCheckpoint(files)
+		}
 		if err != nil {
 			return "", "", err
 		}

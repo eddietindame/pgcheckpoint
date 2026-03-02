@@ -21,6 +21,8 @@ PostgreSQL database. The resulting SQL file is saved to the checkpoints
 directory under the active profile.
 
 The checkpoint filename can be controlled with the --filename flag.
+Use --naming-mode to choose between sequential (checkpoint_1.sql,
+checkpoint_2.sql) and timestamp (checkpoint_2026-03-02_15-30-45.sql) naming.
 This is the default command when pgcheckpoint is called without a subcommand.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
@@ -37,7 +39,7 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 		)
 		fmt.Println("Database url:", url)
 
-		out, path, err := checkpoint.CreateCheckpoint(filename, url, getCheckpointDir(), profile)
+		out, path, err := checkpoint.CreateCheckpoint(filename, url, getCheckpointDir(), profile, getNamingMode())
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

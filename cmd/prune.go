@@ -18,13 +18,15 @@ var pruneCmd = &cobra.Command{
 one. This frees up disk space while keeping the latest checkpoint available
 for restore.
 
-Displays the number of checkpoints that were removed.`,
+Use --naming-mode to match the naming convention of your checkpoints
+(sequential or timestamp). Displays the number of checkpoints that were
+removed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(); err != nil {
 			return fmt.Errorf("error: %v\n", err)
 		}
 
-		count, err := checkpoint.PruneCheckpoints(getCheckpointDir(), profile)
+		count, err := checkpoint.PruneCheckpoints(getCheckpointDir(), profile, getNamingMode())
 
 		if err != nil {
 			return fmt.Errorf("Error pruning checkpoints: %w", err)

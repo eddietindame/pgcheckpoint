@@ -62,6 +62,7 @@ Running `pgcheckpoint` without a subcommand defaults to `create`.
     --db-name string        Database name (default "db")
     --db-sslmode string     SSL mode (default "disable")
     --checkpoint-dir string Checkpoint storage directory (default "~/.pgcheckpoint/checkpoints")
+    --naming-mode string    Checkpoint naming mode: "sequential" or "timestamp" (default "sequential")
 -c, --config string         Global config file path
 -j, --project-config string Project config file path
     --profile string        Config profile to use (default "default")
@@ -101,6 +102,7 @@ db_port: 5432
 db_name: myapp_dev
 db_sslmode: disable
 checkpoint_dir: /path/to/checkpoints
+naming_mode: sequential # or "timestamp"
 
 staging:
   db_user: staging_user
@@ -127,6 +129,30 @@ Checkpoints are stored in your home directory by default:
 For example: `~/.pgcheckpoint/checkpoints/default/checkpoint_1.sql`
 
 This can be overridden with the `--checkpoint-dir` flag or `checkpoint_dir` config key.
+
+### Naming modes
+
+The `--naming-mode` flag (or `naming_mode` config key) controls how checkpoint files are named:
+
+- **`sequential`** (default) — Files are numbered sequentially: `checkpoint_1.sql`, `checkpoint_2.sql`, etc.
+- **`timestamp`** — Files include a timestamp: `checkpoint_2026-03-02_15-30-45.sql`. Timestamps sort lexicographically and are human-readable.
+
+```sh
+# Create a timestamp-named checkpoint
+pgcheckpoint create --naming-mode timestamp
+
+# Restore latest timestamp checkpoint
+pgcheckpoint restore --naming-mode timestamp
+
+# Prune old timestamp checkpoints
+pgcheckpoint prune --naming-mode timestamp
+```
+
+You can also set this in your config file:
+
+```yaml
+naming_mode: timestamp
+```
 
 ## Development
 

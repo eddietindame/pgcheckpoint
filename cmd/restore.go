@@ -21,6 +21,9 @@ the checkpoint SQL file using psql. If a checkpoint filename is provided
 as an argument (e.g. checkpoint_2.sql), that checkpoint is restored.
 Otherwise the latest checkpoint for the active profile is used.
 
+Use --naming-mode to match the naming convention of your checkpoints
+(sequential or timestamp) when restoring the latest.
+
 This will overwrite the current state of the database with the contents
 of the checkpoint file.`,
 	Args: cobra.MaximumNArgs(1),
@@ -44,7 +47,7 @@ of the checkpoint file.`,
 			target = args[0]
 		}
 
-		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile, target)
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile, target, getNamingMode())
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)
