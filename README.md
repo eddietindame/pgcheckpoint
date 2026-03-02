@@ -55,7 +55,6 @@ Running `pgcheckpoint` without a subcommand defaults to `create`.
 
 ```
 -p, --port int              PostgreSQL port (default 5432)
--f, --filename string       Checkpoint filename (default "checkpoint_1.sql")
     --db-user string        Database user (default "user")
     --db-password string    Database password (default "password")
     --db-host string        Database host (default "localhost")
@@ -102,7 +101,7 @@ db_port: 5432
 db_name: myapp_dev
 db_sslmode: disable
 checkpoint_dir: /path/to/checkpoints
-naming_mode: sequential # or "timestamp"
+naming_mode: sequential # or "timestamp", "compact", "unix"
 
 staging:
   db_user: staging_user
@@ -123,10 +122,12 @@ pgcheckpoint create --profile staging
 Checkpoints are stored in your home directory by default:
 
 ```
-~/.pgcheckpoint/checkpoints/{profile}/checkpoint_N.sql
+~/.pgcheckpoint/checkpoints/{profile}/
 ```
 
 For example: `~/.pgcheckpoint/checkpoints/default/checkpoint_1.sql`
+
+The filename format depends on the active naming mode (see [Naming modes](#naming-modes)).
 
 This can be overridden with the `--checkpoint-dir` flag or `checkpoint_dir` config key.
 

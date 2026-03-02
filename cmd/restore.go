@@ -47,7 +47,12 @@ of the checkpoint file.`,
 			target = args[0]
 		}
 
-		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile, target, getNamingMode())
+		mode, err := getNamingMode()
+		if err != nil {
+			return err
+		}
+
+		out, restoredCheckpoint, err := checkpoint.RestoreCheckpoint(url, getCheckpointDir(), profile, target, mode)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

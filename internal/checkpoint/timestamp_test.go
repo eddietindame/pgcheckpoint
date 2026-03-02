@@ -10,16 +10,16 @@ func TestParseCheckpointTimestamp(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		mode    string
+		mode    NamingMode
 		want    time.Time
 		wantErr bool
 	}{
-		{"timestamp valid", "checkpoint_2026-03-02_15-30-45.sql", "timestamp", time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
-		{"timestamp another", "checkpoint_2025-12-31_23-59-59.sql", "timestamp", time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC), false},
-		{"timestamp invalid", "checkpoint_3.sql", "timestamp", time.Time{}, true},
-		{"timestamp garbage", "garbage.sql", "timestamp", time.Time{}, true},
-		{"compact valid", "checkpoint_20260302T153045.sql", "compact", time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
-		{"compact invalid", "checkpoint_3.sql", "compact", time.Time{}, true},
+		{"timestamp valid", "checkpoint_2026-03-02_15-30-45.sql", NamingModeTimestamp, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
+		{"timestamp another", "checkpoint_2025-12-31_23-59-59.sql", NamingModeTimestamp, time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC), false},
+		{"timestamp invalid", "checkpoint_3.sql", NamingModeTimestamp, time.Time{}, true},
+		{"timestamp garbage", "garbage.sql", NamingModeTimestamp, time.Time{}, true},
+		{"compact valid", "checkpoint_20260302T153045.sql", NamingModeCompact, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
+		{"compact invalid", "checkpoint_3.sql", NamingModeCompact, time.Time{}, true},
 	}
 
 	for _, tt := range tests {
@@ -64,13 +64,13 @@ func TestParseCheckpointTime(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		mode    string
+		mode    NamingMode
 		want    time.Time
 		wantErr bool
 	}{
-		{"timestamp", "checkpoint_2026-03-02_15-30-45.sql", "timestamp", time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
-		{"compact", "checkpoint_20260302T153045.sql", "compact", time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
-		{"unix", "checkpoint_1740934245.sql", "unix", time.Unix(1740934245, 0), false},
+		{"timestamp", "checkpoint_2026-03-02_15-30-45.sql", NamingModeTimestamp, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
+		{"compact", "checkpoint_20260302T153045.sql", NamingModeCompact, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
+		{"unix", "checkpoint_1740934245.sql", NamingModeUnix, time.Unix(1740934245, 0), false},
 	}
 
 	for _, tt := range tests {
@@ -90,7 +90,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []string
-		mode     string
+		mode     NamingMode
 		wantFile string
 		wantTime time.Time
 		wantErr  bool
@@ -102,7 +102,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 				"checkpoint_2026-03-02_15-30-45.sql",
 				"checkpoint_2026-02-15_08-00-00.sql",
 			},
-			"timestamp",
+			NamingModeTimestamp,
 			"checkpoint_2026-03-02_15-30-45.sql",
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
 			false,
@@ -114,7 +114,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 				"checkpoint_20260302T153045.sql",
 				"checkpoint_20260215T080000.sql",
 			},
-			"compact",
+			NamingModeCompact,
 			"checkpoint_20260302T153045.sql",
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
 			false,
@@ -126,7 +126,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 				"checkpoint_1740934245.sql",
 				"checkpoint_1740500000.sql",
 			},
-			"unix",
+			NamingModeUnix,
 			"checkpoint_1740934245.sql",
 			time.Unix(1740934245, 0),
 			false,
@@ -134,7 +134,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 		{
 			"timestamp single",
 			[]string{"checkpoint_2026-01-01_10-00-00.sql"},
-			"timestamp",
+			NamingModeTimestamp,
 			"checkpoint_2026-01-01_10-00-00.sql",
 			time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC),
 			false,
@@ -142,7 +142,7 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 		{
 			"error",
 			[]string{"checkpoint_bad.sql"},
-			"timestamp",
+			NamingModeTimestamp,
 			"",
 			time.Time{},
 			true,
@@ -167,13 +167,12 @@ func TestGetLatestTimestampCheckpoint(t *testing.T) {
 
 func TestGetNextTimestampCheckpointFilePath(t *testing.T) {
 	modes := []struct {
-		name   string
-		mode   string
-		prefix string
+		name string
+		mode NamingMode
 	}{
-		{"timestamp", "timestamp", "checkpoint_"},
-		{"compact", "compact", "checkpoint_"},
-		{"unix", "unix", "checkpoint_"},
+		{"timestamp", NamingModeTimestamp},
+		{"compact", NamingModeCompact},
+		{"unix", NamingModeUnix},
 	}
 
 	for _, tt := range modes {
@@ -201,7 +200,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 		name    string
 		input   []string
 		latest  time.Time
-		mode    string
+		mode    NamingMode
 		want    []string
 		wantErr bool
 	}{
@@ -213,7 +212,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 				"checkpoint_2026-03-02_15-30-45.sql",
 			},
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
-			"timestamp",
+			NamingModeTimestamp,
 			[]string{
 				"checkpoint_2026-01-01_10-00-00.sql",
 				"checkpoint_2026-02-15_08-00-00.sql",
@@ -227,7 +226,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 				"checkpoint_20260302T153045.sql",
 			},
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
-			"compact",
+			NamingModeCompact,
 			[]string{"checkpoint_20260101T100000.sql"},
 			false,
 		},
@@ -238,7 +237,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 				"checkpoint_1740934245.sql",
 			},
 			time.Unix(1740934245, 0),
-			"unix",
+			NamingModeUnix,
 			[]string{"checkpoint_1740000000.sql"},
 			false,
 		},
@@ -246,7 +245,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 			"single latest",
 			[]string{"checkpoint_2026-03-02_15-30-45.sql"},
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
-			"timestamp",
+			NamingModeTimestamp,
 			nil,
 			false,
 		},
@@ -254,7 +253,7 @@ func TestTimestampCheckpointsToDelete(t *testing.T) {
 			"error",
 			[]string{"checkpoint_bad.sql"},
 			time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC),
-			"timestamp",
+			NamingModeTimestamp,
 			nil,
 			true,
 		},

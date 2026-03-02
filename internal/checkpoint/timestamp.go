@@ -15,13 +15,11 @@ const (
 )
 
 // timestampFormatForMode returns the time format string for a given naming mode.
-func timestampFormatForMode(namingMode string) string {
-	switch namingMode {
-	case "compact":
+func timestampFormatForMode(mode NamingMode) string {
+	if mode == NamingModeCompact {
 		return compactFormat
-	default:
-		return timestampFormat
 	}
+	return timestampFormat
 }
 
 // parseCheckpointTimestamp extracts the timestamp from a checkpoint filename using the given format.
@@ -45,19 +43,19 @@ func parseCheckpointUnix(filename string) (time.Time, error) {
 }
 
 // parseCheckpointTime parses a checkpoint filename into a time.Time for the given naming mode.
-func parseCheckpointTime(filename, namingMode string) (time.Time, error) {
-	if namingMode == "unix" {
+func parseCheckpointTime(filename string, mode NamingMode) (time.Time, error) {
+	if mode == NamingModeUnix {
 		return parseCheckpointUnix(filename)
 	}
-	return parseCheckpointTimestamp(filename, timestampFormatForMode(namingMode))
+	return parseCheckpointTimestamp(filename, timestampFormatForMode(mode))
 }
 
 // getLatestTimestampCheckpoint returns the checkpoint with the newest time for the given naming mode.
-func getLatestTimestampCheckpoint(files []string, namingMode string) (string, time.Time, error) {
+func getLatestTimestampCheckpoint(files []string, mode NamingMode) (string, time.Time, error) {
 	var latest time.Time
 	var latestFile string
 	for _, file := range files {
-		t, err := parseCheckpointTime(file, namingMode)
+		t, err := parseCheckpointTime(file, mode)
 		if err != nil {
 			return "", time.Time{}, err
 		}
@@ -70,13 +68,13 @@ func getLatestTimestampCheckpoint(files []string, namingMode string) (string, ti
 }
 
 // getNextTimestampCheckpointFilePath generates a checkpoint path using the current time and naming mode.
-func getNextTimestampCheckpointFilePath(dir, namingMode string) string {
+func getNextTimestampCheckpointFilePath(dir string, mode NamingMode) string {
 	now := time.Now()
 	var suffix string
-	if namingMode == "unix" {
+	if mode == NamingModeUnix {
 		suffix = strconv.FormatInt(now.Unix(), 10)
 	} else {
-		suffix = now.Format(timestampFormatForMode(namingMode))
+		suffix = now.Format(timestampFormatForMode(mode))
 	}
 	filename := fmt.Sprintf("checkpoint_%s.sql", suffix)
 	return getCheckpointFilePath(dir, filename)
@@ -84,10 +82,10 @@ func getNextTimestampCheckpointFilePath(dir, namingMode string) string {
 
 // timestampCheckpointsToDelete returns all checkpoint files except the one matching latest,
 // parsing filenames according to the given naming mode.
-func timestampCheckpointsToDelete(filenames []string, latest time.Time, namingMode string) ([]string, error) {
+func timestampCheckpointsToDelete(filenames []string, latest time.Time, mode NamingMode) ([]string, error) {
 	var toDelete []string
 	for _, file := range filenames {
-		t, err := parseCheckpointTime(file, namingMode)
+		t, err := parseCheckpointTime(file, mode)
 		if err != nil {
 			return nil, err
 		}

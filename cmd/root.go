@@ -32,8 +32,8 @@ func getCheckpointDir() string {
 	return checkpoint.DefaultCheckpointDir()
 }
 
-func getNamingMode() string {
-	return viper.GetString("naming_mode")
+func getNamingMode() (checkpoint.NamingMode, error) {
+	return checkpoint.ParseNamingMode(viper.GetString("naming_mode"))
 }
 
 func viperKeyToFlagName(key string) string {
@@ -72,7 +72,6 @@ var (
 	projectCfgFile string
 	profile        string
 	port           int
-	filename       string
 	dbUser         string
 	dbPassword     string
 	dbHost         string
@@ -93,7 +92,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential, timestamp, compact, or unix)")
 
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
-	rootCmd.PersistentFlags().StringVarP(&filename, "filename", "f", "checkpoint_1.sql", "Filename for checkpoint")
 	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", "user", "Database user")
 	rootCmd.PersistentFlags().StringVar(&dbPassword, "db-password", "password",
 		"Database password")

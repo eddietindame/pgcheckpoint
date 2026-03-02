@@ -20,7 +20,6 @@ var createCmd = &cobra.Command{
 PostgreSQL database. The resulting SQL file is saved to the checkpoints
 directory under the active profile.
 
-The checkpoint filename can be controlled with the --filename flag.
 Use --naming-mode to choose between sequential, timestamp, compact, or
 unix naming.
 This is the default command when pgcheckpoint is called without a subcommand.`,
@@ -39,7 +38,12 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 		)
 		fmt.Println("Database url:", url)
 
-		out, path, err := checkpoint.CreateCheckpoint(filename, url, getCheckpointDir(), profile, getNamingMode())
+		mode, err := getNamingMode()
+		if err != nil {
+			return err
+		}
+
+		out, path, err := checkpoint.CreateCheckpoint(url, getCheckpointDir(), profile, mode)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

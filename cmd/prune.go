@@ -26,10 +26,15 @@ checkpoints that were removed.`,
 			return fmt.Errorf("error: %v\n", err)
 		}
 
-		count, err := checkpoint.PruneCheckpoints(getCheckpointDir(), profile, getNamingMode())
+		mode, err := getNamingMode()
+		if err != nil {
+			return err
+		}
+
+		count, err := checkpoint.PruneCheckpoints(getCheckpointDir(), profile, mode)
 
 		if err != nil {
-			return fmt.Errorf("Error pruning checkpoints: %w", err)
+			return fmt.Errorf("error pruning checkpoints: %w", err)
 		}
 
 		fmt.Println("Checkpoints pruned:", count)
