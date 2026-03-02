@@ -3,147 +3,99 @@ package checkpoint
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
-func TestParseCheckpointNumber(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		want    int
-		wantErr bool
-	}{
-		{"basic", "checkpoint_3.sql", 3, false},
-		{"double digit", "checkpoint_12.sql", 12, false},
-		{"no suffix", "checkpoint.sql", 0, false},
-		{"invalid", "garbage.sql", 0, true},
+// createTestCheckpoints is a helper that creates checkpoint files in a temp dir
+// and returns the base dir and profile dir.
+func createTestCheckpoints(t *testing.T, profile string, filenames []string) string {
+	t.Helper()
+	baseDir := t.TempDir()
+	profileDir := filepath.Join(baseDir, profile)
+	if err := os.MkdirAll(profileDir, 0755); err != nil {
+		t.Fatalf("failed to create profile dir: %v", err)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseCheckpointNumber(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Errorf("got %d, want %d", got, tt.want)
-			}
-		})
+	for _, f := range filenames {
+		if err := os.WriteFile(filepath.Join(profileDir, f), []byte("-- sql"), 0644); err != nil {
+			t.Fatalf("failed to create file %s: %v", f, err)
+		}
 	}
+	return baseDir
 }
 
-func TestGetLatestCheckpoint(t *testing.T) {
-	caseBasic := []string{
-		"checkpoint_2.sql",
-		"checkpoint_1.sql",
-		"checkpoint_3.sql",
-	}
+func TestListCheckpointFilenames(t *testing.T) {
+	t.Run("lists existing checkpoints", func(t *testing.T) {
+		files := []string{"checkpoint_1.sql", "checkpoint_2.sql", "checkpoint_3.sql"}
+		baseDir := createTestCheckpoints(t, "default", files)
 
-	caseError1 := []string{
-		"checkpoint_1.sql",
-		"checkpoint_poop.sql",
-	}
+		got, err := ListCheckpointFilenames(baseDir, "default")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
-	caseNoSuffix := []string{
-		"checkpoint.sql",
-	}
+		sort.Strings(got)
+		sort.Strings(files)
+		if len(got) != len(files) {
+			t.Fatalf("got %d files, want %d", len(got), len(files))
+		}
+		for i := range got {
+			if got[i] != files[i] {
+				t.Errorf("got %s, want %s", got[i], files[i])
+			}
+		}
+	})
 
-	tests := []struct {
-		name    string
-		input   []string
-		wantStr string
-		wantInt int
-		wantErr bool
-	}{
-		{"basic", caseBasic, "checkpoint_3.sql", 3, false},
-		{"error1", caseError1, "", 0, true},
-		{"no suffix", caseNoSuffix, "checkpoint_0.sql", 0, false},
-	}
+	t.Run("returns empty for no checkpoints", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", nil)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotStr, gotInt, err := getLatestCheckpoint(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if gotStr != tt.wantStr {
-				t.Errorf("got str %s, want str %s", gotStr, tt.wantStr)
-			}
-			if gotInt != tt.wantInt {
-				t.Errorf("got int %d, want int %d", gotInt, tt.wantInt)
-			}
-		})
-	}
-}
+		got, err := ListCheckpointFilenames(baseDir, "default")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("got %d files, want 0", len(got))
+		}
+	})
 
-func TestCheckpointsToDelete(t *testing.T) {
-	tests := []struct {
-		name           string
-		filenamesInput []string
-		latestInput    int
-		want           []string
-		wantErr        bool
-	}{
-		{
-			"basic",
-			[]string{"checkpoint_1.sql", "checkpoint_2.sql", "checkpoint_3.sql"},
-			3,
-			[]string{"checkpoint_1.sql", "checkpoint_2.sql"},
-			false,
-		},
-		{
-			"single",
-			[]string{"checkpoint_1.sql"},
-			1,
-			[]string{},
-			false,
-		},
-		{
-			"weird order",
-			[]string{"checkpoint_1.sql", "checkpoint_3.sql"},
-			3,
-			[]string{"checkpoint_1.sql"},
-			false,
-		},
-		{
-			"error",
-			[]string{"checkpoint_1.sql", "checkpointerror.sql"},
-			3,
-			[]string{},
-			true,
-		},
-	}
+	t.Run("ignores non-checkpoint files", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1.sql"})
+		// Add a non-checkpoint file
+		profileDir := filepath.Join(baseDir, "default")
+		os.WriteFile(filepath.Join(profileDir, "notes.txt"), []byte("hi"), 0644)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := checkpointsToDelete(tt.filenamesInput, tt.latestInput)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if len(got) != len(tt.want) {
-				t.Errorf("got %v, want %v", got, tt.want)
-				return
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("got %v, want %v", got, tt.want)
-					return
-				}
-			}
-		})
-	}
+		got, err := ListCheckpointFilenames(baseDir, "default")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 1 || got[0] != "checkpoint_1.sql" {
+			t.Errorf("got %v, want [checkpoint_1.sql]", got)
+		}
+	})
+
+	t.Run("creates profile dir if missing", func(t *testing.T) {
+		baseDir := t.TempDir()
+
+		got, err := ListCheckpointFilenames(baseDir, "newprofile")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("got %d files, want 0", len(got))
+		}
+		// Verify the dir was created
+		if _, err := os.Stat(filepath.Join(baseDir, "newprofile")); os.IsNotExist(err) {
+			t.Error("expected profile dir to be created")
+		}
+	})
 }
 
 func TestDeleteCheckpoint(t *testing.T) {
 	t.Run("deletes existing checkpoint", func(t *testing.T) {
-		dir := t.TempDir()
-		profile := "default"
-		profileDir := filepath.Join(dir, profile)
-		os.MkdirAll(profileDir, 0755)
-		os.WriteFile(filepath.Join(profileDir, "checkpoint_1.sql"), []byte("data"), 0644)
-		os.WriteFile(filepath.Join(profileDir, "checkpoint_2.sql"), []byte("data"), 0644)
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1.sql", "checkpoint_2.sql"})
+		profileDir := filepath.Join(baseDir, "default")
 
-		err := DeleteCheckpoint(dir, profile, "checkpoint_1.sql")
+		err := DeleteCheckpoint(baseDir, "default", "checkpoint_1.sql")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -157,35 +109,86 @@ func TestDeleteCheckpoint(t *testing.T) {
 	})
 
 	t.Run("returns error for non-existent checkpoint", func(t *testing.T) {
-		dir := t.TempDir()
-		profile := "default"
-		os.MkdirAll(filepath.Join(dir, profile), 0755)
+		baseDir := createTestCheckpoints(t, "default", nil)
 
-		err := DeleteCheckpoint(dir, profile, "checkpoint_99.sql")
+		err := DeleteCheckpoint(baseDir, "default", "checkpoint_99.sql")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 }
 
-func TestGetNextCheckpointFilePath(t *testing.T) {
-	tests := []struct {
-		name    string
-		largest int
-		dir     string
-		want    string
-	}{
-		{"first", 0, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_1.sql"},
-		{"third", 2, "/tmp/pgcheckpoint", "/tmp/pgcheckpoint/checkpoint_3.sql"},
-		{"custom dir", 5, "/home/user/dumps", "/home/user/dumps/checkpoint_6.sql"},
-	}
+func TestPruneCheckpoints(t *testing.T) {
+	t.Run("prunes all but latest", func(t *testing.T) {
+		files := []string{"checkpoint_1.sql", "checkpoint_2.sql", "checkpoint_3.sql"}
+		baseDir := createTestCheckpoints(t, "default", files)
+		profileDir := filepath.Join(baseDir, "default")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := getNextCheckpointFilePath(tt.largest, tt.dir)
-			if got != tt.want {
-				t.Errorf("got %s, want %s", got, tt.want)
-			}
-		})
-	}
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("got count %d, want 2", count)
+		}
+
+		// Only checkpoint_3.sql should remain
+		remaining, _ := os.ReadDir(profileDir)
+		if len(remaining) != 1 {
+			t.Fatalf("got %d remaining files, want 1", len(remaining))
+		}
+		if remaining[0].Name() != "checkpoint_3.sql" {
+			t.Errorf("got %s, want checkpoint_3.sql", remaining[0].Name())
+		}
+	})
+
+	t.Run("no-op with single checkpoint", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1.sql"})
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("got count %d, want 0", count)
+		}
+	})
+
+	t.Run("no-op with no checkpoints", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", nil)
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("got count %d, want 0", count)
+		}
+	})
+
+	t.Run("prunes timestamp mode", func(t *testing.T) {
+		files := []string{
+			"checkpoint_2026-01-01_10-00-00.sql",
+			"checkpoint_2026-02-15_08-00-00.sql",
+			"checkpoint_2026-03-02_15-30-45.sql",
+		}
+		baseDir := createTestCheckpoints(t, "default", files)
+		profileDir := filepath.Join(baseDir, "default")
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeTimestamp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("got count %d, want 2", count)
+		}
+
+		remaining, _ := os.ReadDir(profileDir)
+		if len(remaining) != 1 {
+			t.Fatalf("got %d remaining files, want 1", len(remaining))
+		}
+		if remaining[0].Name() != "checkpoint_2026-03-02_15-30-45.sql" {
+			t.Errorf("got %s, want checkpoint_2026-03-02_15-30-45.sql", remaining[0].Name())
+		}
+	})
 }

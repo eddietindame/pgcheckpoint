@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -15,12 +13,12 @@ func DefaultCheckpointDir() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".pgcheckpoint", "checkpoints")
+	return getCheckpointFilePath(home, ".pgcheckpoint/checkpoints")
 }
 
 // getOrCreateCheckpointDir returns the checkpoint directory path, creating it if it doesn't exist.
 func getOrCreateCheckpointDir(baseDir, profile string) (string, error) {
-	path := filepath.Join(baseDir, profile)
+	path := getCheckpointFilePath(baseDir, profile)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		fmt.Printf("Path %s does not exist, creating path...\n", path)
 		err := os.MkdirAll(path, 0755)
@@ -33,62 +31,6 @@ func getOrCreateCheckpointDir(baseDir, profile string) (string, error) {
 	}
 
 	return path, nil
-}
-
-// parseCheckpointNumber extracts the number from the end of a checkpoint file filename.
-func parseCheckpointNumber(filename string) (int, error) {
-	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint"), ".sql")
-	intString := strings.TrimPrefix(suffix, "_")
-	if intString == "" {
-		intString = "0"
-	}
-	n, err := strconv.Atoi(intString)
-	if err != nil {
-		return 0, fmt.Errorf("error parsing checkpoint number: %w", err)
-	}
-	return n, nil
-}
-
-// getLatestCheckpoint returns the latest checkpoint in a list of checkpoint file names.
-func getLatestCheckpoint(files []string) (string, int, error) {
-	largest := 0
-	for _, file := range files {
-		n, err := parseCheckpointNumber(file)
-		if err != nil {
-			return "", 0, fmt.Errorf("error finding latest checkpoint: %w", err)
-		}
-		if n > largest {
-			largest = n
-		}
-	}
-
-	return fmt.Sprintf("checkpoint_%d.sql", largest), largest, nil
-}
-
-// getCheckpointFilePath returns the file path for a checkpoint in a dir.
-func getCheckpointFilePath(dir, filename string) string {
-	return filepath.Join(dir, filename)
-}
-
-// getNextCheckpointFilePath returns the file path for the next checkpoint (latest + 1) in a dir.
-func getNextCheckpointFilePath(largest int, dir string) string {
-	filename := fmt.Sprintf("checkpoint_%d.sql", largest+1)
-	return getCheckpointFilePath(dir, filename)
-}
-
-// checkpointsToDelete returns a list of files eligible to be deleted from a list of existing files.
-func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
-	var toDelete []string
-	for _, file := range filenames {
-		n, err := parseCheckpointNumber(file)
-		if err == nil && n < latest {
-			toDelete = append(toDelete, file)
-		} else if err != nil {
-			return []string{}, err
-		}
-	}
-
-	return toDelete, nil
 }
 
 // getCheckpointFilenames returns a list of checkpoint filenames (checkpoint_*.sql) in the provided dir.
@@ -269,6 +211,3 @@ func RestoreCheckpoint(url, baseDir, profile, target string, mode NamingMode) (s
 
 	return string(out), filename, nil
 }
-
-// TODO: add unit tests for CreateCheckpoint, PruneCheckpoints, and RestoreCheckpoint
-// using temp directories and mocked exec.Command calls.
