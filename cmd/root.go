@@ -131,17 +131,24 @@ func initConfig() {
 		}
 	}
 
-	// Project config (overrides global)
+	// Project config (overrides global) — use a separate viper instance
+	// to avoid re-finding the global config via the previously registered
+	// search paths.
+	projectViper := viper.New()
 	if projectCfgFile != "" {
-		viper.SetConfigFile(projectCfgFile)
+		projectViper.SetConfigFile(projectCfgFile)
 	} else {
-		viper.SetConfigName(".pgcheckpoint")
-		viper.AddConfigPath(".")
+		projectViper.SetConfigName(".pgcheckpoint")
+		projectViper.AddConfigPath(".")
 	}
 
-	if err := viper.MergeInConfig(); err != nil {
+	if err := projectViper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			cobra.CheckErr(fmt.Errorf("error reading project config: %w", err))
+		}
+	} else {
+		if err := viper.MergeConfigMap(projectViper.AllSettings()); err != nil {
+			cobra.CheckErr(fmt.Errorf("error merging project config: %w", err))
 		}
 	}
 
@@ -155,7 +162,7 @@ func initConfig() {
 			}
 		}
 	} else if profile != "default" {
-		cobra.CheckErr(fmt.Errorf("profile %q not found in config", profile))
+		cobra.CheckErr(fmt.Errorf("profile %q not found in config %s", profile, viper.ConfigFileUsed()))
 	}
 
 	viper.AutomaticEnv()
