@@ -16,10 +16,14 @@ var renameCmd = &cobra.Command{
 	Short: "Rename a checkpoint.",
 	Long: `Change the name portion of an existing checkpoint file for the active profile.
 
+The checkpoint can be specified by full filename (e.g. checkpoint_3_old-name.sql)
+or by its short name (e.g. old-name).
+
 Pass an empty string as the new name to remove the name entirely.
 
 Examples:
   pgcheckpoint rename checkpoint_3_old-name.sql new-name
+  pgcheckpoint rename old-name new-name
   pgcheckpoint rename checkpoint_3.sql "my name"
   pgcheckpoint rename checkpoint_3_old-name.sql ""`,
 	Args: cobra.ExactArgs(2),

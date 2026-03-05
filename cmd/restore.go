@@ -17,9 +17,12 @@ var restoreCmd = &cobra.Command{
 	Use:   "restore [checkpoint]",
 	Short: "Restore database to a checkpoint.",
 	Long: `Restore the configured PostgreSQL database to a checkpoint by executing
-the checkpoint SQL file using psql. If a checkpoint filename is provided
-as an argument (e.g. checkpoint_2.sql), that checkpoint is restored.
-Otherwise the latest checkpoint for the active profile is used.
+the checkpoint SQL file using psql. If a checkpoint is provided as an
+argument, that checkpoint is restored. Otherwise the latest checkpoint
+for the active profile is used.
+
+The checkpoint can be specified by full filename (e.g. checkpoint_2.sql)
+or by its short name (e.g. before-migration).
 
 Use --naming-mode to match the naming convention of your checkpoints
 (sequential, timestamp, compact, or unix) when restoring the latest.

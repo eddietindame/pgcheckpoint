@@ -27,17 +27,27 @@ make build
 pgcheckpoint
 pgcheckpoint create
 
+# Create a named checkpoint
+pgcheckpoint create --name "before migration"
+
 # List checkpoints
 pgcheckpoint list
 
 # Restore database to latest checkpoint
 pgcheckpoint restore
 
-# Restore a specific checkpoint
+# Restore a specific checkpoint by filename or short name
 pgcheckpoint restore checkpoint_2.sql
+pgcheckpoint restore before-migration
 
-# Delete a specific checkpoint
+# Delete a specific checkpoint by filename or short name
 pgcheckpoint delete checkpoint_2.sql
+pgcheckpoint delete before-migration
+
+# Rename a checkpoint (add, change, or remove the name)
+pgcheckpoint rename checkpoint_3.sql "new name"
+pgcheckpoint rename old-name new-name
+pgcheckpoint rename checkpoint_3_some-name.sql ""
 
 # Remove all but the latest checkpoint
 pgcheckpoint prune
@@ -50,10 +60,32 @@ pgcheckpoint prune
 | `create`  | Create a new checkpoint using `pg_dump`                  |
 | `list`    | List all checkpoints for the active profile              |
 | `restore` | Restore the database to a checkpoint (latest by default) |
-| `delete`  | Delete a specific checkpoint by name                     |
+| `delete`  | Delete a specific checkpoint                             |
+| `rename`  | Rename a checkpoint (add, change, or remove the name)    |
 | `prune`   | Remove all but the latest checkpoint                     |
 
 Running `pgcheckpoint` without a subcommand defaults to `create`.
+
+### Named checkpoints
+
+Checkpoints can have an optional human-readable name appended to the filename:
+
+```sh
+pgcheckpoint create --name "before migration"
+# Creates: checkpoint_3_before-migration.sql
+```
+
+Names are sanitised (lowercased, spaces/underscores replaced with hyphens, special characters stripped).
+
+Commands that accept a checkpoint argument (`restore`, `delete`, `rename`) can resolve checkpoints by their short name instead of the full filename:
+
+```sh
+pgcheckpoint restore before-migration
+pgcheckpoint delete before-migration
+pgcheckpoint rename before-migration "after migration"
+```
+
+If multiple checkpoints share the same short name, an error is returned.
 
 ### Flags
 
@@ -66,6 +98,7 @@ Running `pgcheckpoint` without a subcommand defaults to `create`.
     --db-sslmode string     SSL mode (default "disable")
     --checkpoint-dir string Checkpoint storage directory (default "~/.pgcheckpoint/checkpoints")
     --naming-mode string    Checkpoint naming mode: sequential, timestamp, compact, or unix (default "sequential")
+-n, --name string           Optional human-readable name for the checkpoint (create only)
 -c, --config string         Global config file path
 -j, --project-config string Project config file path
     --profile string        Config profile to use (default "default")
@@ -145,6 +178,8 @@ The `--naming-mode` flag (or `naming_mode` config key) controls how checkpoint f
 | `timestamp` | `checkpoint_2026-03-02_15-30-45.sql` | Human-readable date and time |
 | `compact` | `checkpoint_20260302T153045.sql` | RFC 3339 compact (no separators) |
 | `unix` | `checkpoint_1740934245.sql` | Unix epoch seconds |
+
+With `--name`, a name is appended: `checkpoint_1_before-migration.sql`, `checkpoint_2026-03-02_15-30-45_before-migration.sql`, etc.
 
 ```sh
 # Create checkpoints with different naming modes
