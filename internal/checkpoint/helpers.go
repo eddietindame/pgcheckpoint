@@ -87,6 +87,21 @@ func getNextCheckpointFilePath(largest int, dir, name string) string {
 	return getCheckpointFilePath(dir, filename)
 }
 
+// extractCheckpointIdentifier returns the identifier portion of a checkpoint filename
+// (e.g. "3", "2026-03-02_15-30-45", "1740934245") based on the naming mode.
+func extractCheckpointIdentifier(filename string, mode NamingMode) string {
+	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint_"), ".sql")
+	if mode == NamingModeTimestamp || mode == NamingModeCompact {
+		format := timestampFormatForMode(mode)
+		if len(suffix) > len(format) {
+			return suffix[:len(format)]
+		}
+		return suffix
+	}
+	// Sequential and Unix: leading digits
+	return extractLeadingDigits(suffix)
+}
+
 // checkpointsToDelete returns a list of files eligible to be deleted from a list of existing files.
 func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
 	var toDelete []string

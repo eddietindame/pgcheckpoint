@@ -118,6 +118,84 @@ func TestDeleteCheckpoint(t *testing.T) {
 	})
 }
 
+func TestRenameCheckpoint(t *testing.T) {
+	t.Run("rename a named sequential checkpoint", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_3_old-name.sql"})
+		profileDir := filepath.Join(baseDir, "default")
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "checkpoint_3_old-name.sql", "new-name", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_3_new-name.sql" {
+			t.Errorf("got %s, want checkpoint_3_new-name.sql", newFilename)
+		}
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_3_old-name.sql")); !os.IsNotExist(err) {
+			t.Error("expected old file to be gone")
+		}
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_3_new-name.sql")); err != nil {
+			t.Error("expected new file to exist")
+		}
+	})
+
+	t.Run("add a name to an unnamed checkpoint", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_5.sql"})
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "checkpoint_5.sql", "added-name", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_5_added-name.sql" {
+			t.Errorf("got %s, want checkpoint_5_added-name.sql", newFilename)
+		}
+	})
+
+	t.Run("remove a name with empty string", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_2_some-name.sql"})
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "checkpoint_2_some-name.sql", "", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_2.sql" {
+			t.Errorf("got %s, want checkpoint_2.sql", newFilename)
+		}
+	})
+
+	t.Run("rename a named timestamp checkpoint", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_2026-03-02_15-30-45_old.sql"})
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "checkpoint_2026-03-02_15-30-45_old.sql", "new", NamingModeTimestamp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_2026-03-02_15-30-45_new.sql" {
+			t.Errorf("got %s, want checkpoint_2026-03-02_15-30-45_new.sql", newFilename)
+		}
+	})
+
+	t.Run("rename a named unix checkpoint", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1740934245_old.sql"})
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "checkpoint_1740934245_old.sql", "new", NamingModeUnix)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_1740934245_new.sql" {
+			t.Errorf("got %s, want checkpoint_1740934245_new.sql", newFilename)
+		}
+	})
+
+	t.Run("error on non-existent target", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", nil)
+
+		_, err := RenameCheckpoint(baseDir, "default", "checkpoint_99.sql", "name", NamingModeSequential)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
 func TestPruneCheckpoints(t *testing.T) {
 	t.Run("prunes all but latest", func(t *testing.T) {
 		files := []string{"checkpoint_1.sql", "checkpoint_2.sql", "checkpoint_3.sql"}

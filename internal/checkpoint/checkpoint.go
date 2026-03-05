@@ -166,6 +166,36 @@ func DeleteCheckpoint(baseDir, profile, target string) error {
 	return nil
 }
 
+// RenameCheckpoint changes the name portion of an existing checkpoint file.
+// If newName is empty, the name is removed. Returns the new filename.
+func RenameCheckpoint(baseDir, profile, target, newName string, mode NamingMode) (string, error) {
+	dir, err := getOrCreateCheckpointDir(baseDir, profile)
+	if err != nil {
+		return "", err
+	}
+
+	oldPath := getCheckpointFilePath(dir, target)
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("checkpoint %q not found", target)
+	}
+
+	id := extractCheckpointIdentifier(target, mode)
+
+	var newFilename string
+	if newName != "" {
+		newFilename = fmt.Sprintf("checkpoint_%s_%s.sql", id, sanitizeName(newName))
+	} else {
+		newFilename = fmt.Sprintf("checkpoint_%s.sql", id)
+	}
+
+	newPath := getCheckpointFilePath(dir, newFilename)
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return "", fmt.Errorf("error renaming checkpoint: %w", err)
+	}
+
+	return newFilename, nil
+}
+
 // RestoreCheckpoint restores the configured database to the state stored in the provided target
 // checkpoint. If no target is given, the latest checkpoint is used based on the mode.
 func RestoreCheckpoint(url, baseDir, profile, target string, mode NamingMode) (string, string, error) {
