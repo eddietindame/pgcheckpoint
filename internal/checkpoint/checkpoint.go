@@ -68,7 +68,8 @@ func ListCheckpointFilenames(baseDir, profile string) ([]string, error) {
 
 // CreateCheckpoint runs pg_dump to create a new checkpoint SQL file. The mode parameter
 // controls the checkpoint filename format (sequential, timestamp, compact, or unix).
-func CreateCheckpoint(url, baseDir, profile string, mode NamingMode) (string, string, error) {
+// If name is non-empty, it is sanitised and appended to the filename.
+func CreateCheckpoint(url, baseDir, profile string, mode NamingMode, name string) (string, string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
 		return "", "", err
@@ -76,7 +77,7 @@ func CreateCheckpoint(url, baseDir, profile string, mode NamingMode) (string, st
 
 	var path string
 	if mode.IsTimestampBased() {
-		path = getNextTimestampCheckpointFilePath(dir, mode)
+		path = getNextTimestampCheckpointFilePath(dir, mode, name)
 	} else {
 		files, err := getCheckpointFilenames(dir)
 		if err != nil {
@@ -88,7 +89,7 @@ func CreateCheckpoint(url, baseDir, profile string, mode NamingMode) (string, st
 			return "", "", err
 		}
 
-		path = getNextCheckpointFilePath(largest, dir)
+		path = getNextCheckpointFilePath(largest, dir, name)
 	}
 	cmd := exec.Command("pg_dump", "--dbname", url, "--file", path)
 	out, err := cmd.CombinedOutput()

@@ -9,7 +9,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var checkpointName string
+
 func init() {
+	createCmd.Flags().StringVarP(&checkpointName, "name", "n", "", "optional human-readable name for the checkpoint")
 	rootCmd.AddCommand(createCmd)
 }
 
@@ -43,7 +46,7 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 			return err
 		}
 
-		out, path, err := checkpoint.CreateCheckpoint(url, getCheckpointDir(), profile, mode)
+		out, path, err := checkpoint.CreateCheckpoint(url, getCheckpointDir(), profile, mode, checkpointName)
 
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, out)

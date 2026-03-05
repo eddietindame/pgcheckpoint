@@ -90,6 +90,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&checkpointDir, "checkpoint-dir", "", "Checkpoint storage directory (default ~/.pgcheckpoint/checkpoints)")
 	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential, timestamp, compact, or unix)")
+	rootCmd.Flags().StringVarP(&checkpointName, "name", "n", "", "optional human-readable name for the checkpoint")
 
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
 	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", "user", "Database user")

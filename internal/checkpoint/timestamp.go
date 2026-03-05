@@ -23,8 +23,12 @@ func timestampFormatForMode(mode NamingMode) string {
 }
 
 // parseCheckpointTimestamp extracts the timestamp from a checkpoint filename using the given format.
+// Any trailing _name portion is stripped by truncating to the known format length.
 func parseCheckpointTimestamp(filename, format string) (time.Time, error) {
 	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint_"), ".sql")
+	if len(suffix) > len(format) {
+		suffix = suffix[:len(format)]
+	}
 	t, err := time.Parse(format, suffix)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error parsing checkpoint timestamp: %w", err)
@@ -33,8 +37,13 @@ func parseCheckpointTimestamp(filename, format string) (time.Time, error) {
 }
 
 // parseCheckpointUnix extracts the unix timestamp from a checkpoint filename.
+// Any trailing _name portion is stripped by taking only leading digits.
 func parseCheckpointUnix(filename string) (time.Time, error) {
 	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint_"), ".sql")
+	suffix = extractLeadingDigits(suffix)
+	if suffix == "" {
+		return time.Time{}, fmt.Errorf("error parsing checkpoint unix timestamp: no digits found")
+	}
 	n, err := strconv.ParseInt(suffix, 10, 64)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error parsing checkpoint unix timestamp: %w", err)
@@ -68,7 +77,8 @@ func getLatestTimestampCheckpoint(files []string, mode NamingMode) (string, time
 }
 
 // getNextTimestampCheckpointFilePath generates a checkpoint path using the current time and naming mode.
-func getNextTimestampCheckpointFilePath(dir string, mode NamingMode) string {
+// If name is non-empty it is appended as checkpoint_{timestamp}_{name}.sql.
+func getNextTimestampCheckpointFilePath(dir string, mode NamingMode, name string) string {
 	now := time.Now()
 	var suffix string
 	if mode == NamingModeUnix {
@@ -76,7 +86,12 @@ func getNextTimestampCheckpointFilePath(dir string, mode NamingMode) string {
 	} else {
 		suffix = now.Format(timestampFormatForMode(mode))
 	}
-	filename := fmt.Sprintf("checkpoint_%s.sql", suffix)
+	var filename string
+	if name != "" {
+		filename = fmt.Sprintf("checkpoint_%s_%s.sql", suffix, sanitizeName(name))
+	} else {
+		filename = fmt.Sprintf("checkpoint_%s.sql", suffix)
+	}
 	return getCheckpointFilePath(dir, filename)
 }
 

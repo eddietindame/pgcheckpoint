@@ -20,6 +20,8 @@ func TestParseCheckpointTimestamp(t *testing.T) {
 		{"timestamp garbage", "garbage.sql", NamingModeTimestamp, time.Time{}, true},
 		{"compact valid", "checkpoint_20260302T153045.sql", NamingModeCompact, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
 		{"compact invalid", "checkpoint_3.sql", NamingModeCompact, time.Time{}, true},
+		{"timestamp named", "checkpoint_2026-03-02_15-30-45_pre-deploy.sql", NamingModeTimestamp, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
+		{"compact named", "checkpoint_20260302T153045_schema-v2.sql", NamingModeCompact, time.Date(2026, 3, 2, 15, 30, 45, 0, time.UTC), false},
 	}
 
 	for _, tt := range tests {
@@ -45,6 +47,7 @@ func TestParseCheckpointUnix(t *testing.T) {
 		{"valid", "checkpoint_1740934245.sql", time.Unix(1740934245, 0), false},
 		{"invalid", "checkpoint_abc.sql", time.Time{}, true},
 		{"garbage", "garbage.sql", time.Time{}, true},
+		{"named", "checkpoint_1740934245_fresh-seed.sql", time.Unix(1740934245, 0), false},
 	}
 
 	for _, tt := range tests {
@@ -177,7 +180,7 @@ func TestGetNextTimestampCheckpointFilePath(t *testing.T) {
 
 	for _, tt := range modes {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getNextTimestampCheckpointFilePath("/tmp/pgcheckpoint", tt.mode)
+			got := getNextTimestampCheckpointFilePath("/tmp/pgcheckpoint", tt.mode, "")
 			dirPrefix := "/tmp/pgcheckpoint/"
 			if !strings.HasPrefix(got, dirPrefix) {
 				t.Errorf("expected dir prefix %s, got %s", dirPrefix, got)

@@ -142,6 +142,32 @@ func TestPruneCheckpoints(t *testing.T) {
 		}
 	})
 
+	t.Run("prunes named sequential checkpoints", func(t *testing.T) {
+		files := []string{
+			"checkpoint_1_init.sql",
+			"checkpoint_2_before-migration.sql",
+			"checkpoint_3_after-migration.sql",
+		}
+		baseDir := createTestCheckpoints(t, "default", files)
+		profileDir := filepath.Join(baseDir, "default")
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("got count %d, want 2", count)
+		}
+
+		remaining, _ := os.ReadDir(profileDir)
+		if len(remaining) != 1 {
+			t.Fatalf("got %d remaining files, want 1", len(remaining))
+		}
+		if remaining[0].Name() != "checkpoint_3_after-migration.sql" {
+			t.Errorf("got %s, want checkpoint_3_after-migration.sql", remaining[0].Name())
+		}
+	})
+
 	t.Run("no-op with single checkpoint", func(t *testing.T) {
 		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1.sql"})
 
@@ -189,6 +215,57 @@ func TestPruneCheckpoints(t *testing.T) {
 		}
 		if remaining[0].Name() != "checkpoint_2026-03-02_15-30-45.sql" {
 			t.Errorf("got %s, want checkpoint_2026-03-02_15-30-45.sql", remaining[0].Name())
+		}
+	})
+
+	t.Run("prunes named timestamp checkpoints", func(t *testing.T) {
+		files := []string{
+			"checkpoint_2026-01-01_10-00-00_init.sql",
+			"checkpoint_2026-02-15_08-00-00_pre-deploy.sql",
+			"checkpoint_2026-03-02_15-30-45_post-deploy.sql",
+		}
+		baseDir := createTestCheckpoints(t, "default", files)
+		profileDir := filepath.Join(baseDir, "default")
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeTimestamp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("got count %d, want 2", count)
+		}
+
+		remaining, _ := os.ReadDir(profileDir)
+		if len(remaining) != 1 {
+			t.Fatalf("got %d remaining files, want 1", len(remaining))
+		}
+		if remaining[0].Name() != "checkpoint_2026-03-02_15-30-45_post-deploy.sql" {
+			t.Errorf("got %s, want checkpoint_2026-03-02_15-30-45_post-deploy.sql", remaining[0].Name())
+		}
+	})
+
+	t.Run("prunes named unix checkpoints", func(t *testing.T) {
+		files := []string{
+			"checkpoint_1740000000_init.sql",
+			"checkpoint_1740934245_fresh-seed.sql",
+		}
+		baseDir := createTestCheckpoints(t, "default", files)
+		profileDir := filepath.Join(baseDir, "default")
+
+		count, err := PruneCheckpoints(baseDir, "default", NamingModeUnix)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("got count %d, want 1", count)
+		}
+
+		remaining, _ := os.ReadDir(profileDir)
+		if len(remaining) != 1 {
+			t.Fatalf("got %d remaining files, want 1", len(remaining))
+		}
+		if remaining[0].Name() != "checkpoint_1740934245_fresh-seed.sql" {
+			t.Errorf("got %s, want checkpoint_1740934245_fresh-seed.sql", remaining[0].Name())
 		}
 	})
 }
