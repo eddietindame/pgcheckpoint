@@ -147,23 +147,28 @@ func PruneCheckpoints(baseDir, profile string, mode NamingMode) (int, error) {
 	return count, nil
 }
 
-// DeleteCheckpoint removes a specific checkpoint file by name.
-func DeleteCheckpoint(baseDir, profile, target string) error {
+// DeleteCheckpoint removes a specific checkpoint file by name or short name.
+func DeleteCheckpoint(baseDir, profile, target string, mode NamingMode) (string, error) {
 	dir, err := getOrCreateCheckpointDir(baseDir, profile)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	path := getCheckpointFilePath(dir, target)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("checkpoint %q not found", target)
+	files, err := getCheckpointFilenames(dir)
+	if err != nil {
+		return "", err
 	}
 
-	if err := os.Remove(path); err != nil {
-		return fmt.Errorf("error deleting checkpoint: %w", err)
+	filename, err := resolveCheckpointTarget(files, target, mode)
+	if err != nil {
+		return "", err
 	}
 
-	return nil
+	if err := os.Remove(getCheckpointFilePath(dir, filename)); err != nil {
+		return "", fmt.Errorf("error deleting checkpoint: %w", err)
+	}
+
+	return filename, nil
 }
 
 // RenameCheckpoint changes the name portion of an existing checkpoint file.
@@ -174,12 +179,18 @@ func RenameCheckpoint(baseDir, profile, target, newName string, mode NamingMode)
 		return "", err
 	}
 
-	oldPath := getCheckpointFilePath(dir, target)
-	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("checkpoint %q not found", target)
+	files, err := getCheckpointFilenames(dir)
+	if err != nil {
+		return "", err
 	}
 
-	id := extractCheckpointIdentifier(target, mode)
+	filename, err := resolveCheckpointTarget(files, target, mode)
+	if err != nil {
+		return "", err
+	}
+
+	oldPath := getCheckpointFilePath(dir, filename)
+	id := extractCheckpointIdentifier(filename, mode)
 
 	var newFilename string
 	if newName != "" {
@@ -206,11 +217,14 @@ func RestoreCheckpoint(url, baseDir, profile, target string, mode NamingMode) (s
 
 	var filename string
 	if target != "" {
-		path := getCheckpointFilePath(dir, target)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return "", "", fmt.Errorf("checkpoint %q not found", target)
+		files, err := getCheckpointFilenames(dir)
+		if err != nil {
+			return "", "", err
 		}
-		filename = target
+		filename, err = resolveCheckpointTarget(files, target, mode)
+		if err != nil {
+			return "", "", err
+		}
 	} else {
 		files, err := getCheckpointFilenames(dir)
 		if err != nil {

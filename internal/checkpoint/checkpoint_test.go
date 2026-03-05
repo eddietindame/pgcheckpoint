@@ -95,7 +95,7 @@ func TestDeleteCheckpoint(t *testing.T) {
 		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1.sql", "checkpoint_2.sql"})
 		profileDir := filepath.Join(baseDir, "default")
 
-		err := DeleteCheckpoint(baseDir, "default", "checkpoint_1.sql")
+		_, err := DeleteCheckpoint(baseDir, "default", "checkpoint_1.sql", NamingModeSequential)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -108,10 +108,26 @@ func TestDeleteCheckpoint(t *testing.T) {
 		}
 	})
 
+	t.Run("deletes by short name", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_1_my-backup.sql", "checkpoint_2.sql"})
+		profileDir := filepath.Join(baseDir, "default")
+
+		filename, err := DeleteCheckpoint(baseDir, "default", "my-backup", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if filename != "checkpoint_1_my-backup.sql" {
+			t.Errorf("got %s, want checkpoint_1_my-backup.sql", filename)
+		}
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_1_my-backup.sql")); !os.IsNotExist(err) {
+			t.Error("expected checkpoint_1_my-backup.sql to be deleted")
+		}
+	})
+
 	t.Run("returns error for non-existent checkpoint", func(t *testing.T) {
 		baseDir := createTestCheckpoints(t, "default", nil)
 
-		err := DeleteCheckpoint(baseDir, "default", "checkpoint_99.sql")
+		_, err := DeleteCheckpoint(baseDir, "default", "checkpoint_99.sql", NamingModeSequential)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -183,6 +199,22 @@ func TestRenameCheckpoint(t *testing.T) {
 		}
 		if newFilename != "checkpoint_1740934245_new.sql" {
 			t.Errorf("got %s, want checkpoint_1740934245_new.sql", newFilename)
+		}
+	})
+
+	t.Run("rename by short name", func(t *testing.T) {
+		baseDir := createTestCheckpoints(t, "default", []string{"checkpoint_3_old-name.sql"})
+		profileDir := filepath.Join(baseDir, "default")
+
+		newFilename, err := RenameCheckpoint(baseDir, "default", "old-name", "new-name", NamingModeSequential)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if newFilename != "checkpoint_3_new-name.sql" {
+			t.Errorf("got %s, want checkpoint_3_new-name.sql", newFilename)
+		}
+		if _, err := os.Stat(filepath.Join(profileDir, "checkpoint_3_new-name.sql")); err != nil {
+			t.Error("expected new file to exist")
 		}
 	})
 

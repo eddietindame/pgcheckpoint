@@ -20,12 +20,17 @@ Unlike prune, which removes all but the latest checkpoint, delete removes
 a single named checkpoint file (e.g. checkpoint_2.sql).`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := checkpoint.DeleteCheckpoint(getCheckpointDir(), profile, args[0])
+		mode, err := getNamingMode()
+		if err != nil {
+			return err
+		}
+
+		filename, err := checkpoint.DeleteCheckpoint(getCheckpointDir(), profile, args[0], mode)
 		if err != nil {
 			return fmt.Errorf("error deleting checkpoint: %w", err)
 		}
 
-		fmt.Println("Checkpoint deleted:", args[0])
+		fmt.Println("Checkpoint deleted:", filename)
 		return nil
 	},
 }

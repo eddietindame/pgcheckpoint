@@ -102,6 +102,47 @@ func extractCheckpointIdentifier(filename string, mode NamingMode) string {
 	return extractLeadingDigits(suffix)
 }
 
+// extractCheckpointName returns the human-readable name portion of a checkpoint filename,
+// or an empty string if the checkpoint has no name.
+func extractCheckpointName(filename string, mode NamingMode) string {
+	id := extractCheckpointIdentifier(filename, mode)
+	suffix := strings.TrimSuffix(strings.TrimPrefix(filename, "checkpoint_"), ".sql")
+	rest := strings.TrimPrefix(suffix, id)
+	rest = strings.TrimPrefix(rest, "_")
+	return rest
+}
+
+// resolveCheckpointTarget resolves a target string to an actual checkpoint filename.
+// It first checks for an exact match, then tries to match by short name.
+// Returns the resolved filename or an error if not found or ambiguous.
+func resolveCheckpointTarget(files []string, target string, mode NamingMode) (string, error) {
+	// Exact match
+	for _, f := range files {
+		if f == target {
+			return f, nil
+		}
+	}
+
+	// Match by short name
+	sanitized := sanitizeName(target)
+	var matches []string
+	for _, f := range files {
+		name := extractCheckpointName(f, mode)
+		if name != "" && name == sanitized {
+			matches = append(matches, f)
+		}
+	}
+
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	if len(matches) > 1 {
+		return "", fmt.Errorf("checkpoint name %q is ambiguous, matches: %v", target, matches)
+	}
+
+	return "", fmt.Errorf("checkpoint %q not found", target)
+}
+
 // checkpointsToDelete returns a list of files eligible to be deleted from a list of existing files.
 func checkpointsToDelete(filenames []string, latest int) ([]string, error) {
 	var toDelete []string
