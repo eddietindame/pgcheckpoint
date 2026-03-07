@@ -54,7 +54,7 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 			return fmt.Errorf("%w: %s", err, out)
 		}
 
-		if len(out) > 0 {
+		if verbose && len(out) > 0 {
 			ui.Detail(out)
 		}
 		ui.Success("Created checkpoint:", path)

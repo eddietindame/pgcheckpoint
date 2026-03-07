@@ -63,7 +63,7 @@ of the checkpoint file.`,
 			return fmt.Errorf("%w: %s", err, out)
 		}
 
-		if len(out) > 0 {
+		if verbose && len(out) > 0 {
 			ui.Detail(out)
 		}
 		ui.Success("Checkpoint restored:", restoredCheckpoint)

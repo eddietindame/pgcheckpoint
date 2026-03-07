@@ -81,6 +81,7 @@ var (
 	dbSSLMode      string
 	checkpointDir  string
 	namingMode     string
+	verbose        bool
 )
 
 func init() {
@@ -101,6 +102,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&dbHost, "db-host", "localhost", "Database host")
 	rootCmd.PersistentFlags().StringVar(&dbName, "db-name", "db", "Database name")
 	rootCmd.PersistentFlags().StringVar(&dbSSLMode, "db-sslmode", "disable", "SSL mode")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show pg_dump/psql output")
 
 	// Bind flags to viper keys so config file values become flag defaults
 	viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("port"))
