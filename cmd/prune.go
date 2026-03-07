@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -37,7 +39,7 @@ checkpoints that were removed.`,
 			return fmt.Errorf("error pruning checkpoints: %w", err)
 		}
 
-		fmt.Println("Checkpoints pruned:", count)
+		ui.Success("Checkpoints pruned:", fmt.Sprint(count))
 		return nil
 	},
 }

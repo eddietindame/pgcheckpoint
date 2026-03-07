@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +35,7 @@ a single checkpoint file.`,
 			return fmt.Errorf("error deleting checkpoint: %w", err)
 		}
 
-		fmt.Println("Checkpoint deleted:", filename)
+		ui.Success("Checkpoint deleted:", filename)
 		return nil
 	},
 }

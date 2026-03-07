@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
 	"github.com/eddietindame/pgcheckpoint/internal/db"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,7 +41,7 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 			viper.GetString("db_name"),
 			viper.GetString("db_sslmode"),
 		)
-		fmt.Println("Database url:", url)
+		ui.Info("Database url:", url)
 
 		mode, err := getNamingMode()
 		if err != nil {
@@ -53,9 +55,9 @@ This is the default command when pgcheckpoint is called without a subcommand.`,
 		}
 
 		if len(out) > 0 {
-			fmt.Printf("\n%s\n", out)
+			ui.Detail(out)
 		}
-		fmt.Println("Created checkpoint:", path)
+		ui.Success("Created checkpoint:", path)
 		return nil
 	},
 }

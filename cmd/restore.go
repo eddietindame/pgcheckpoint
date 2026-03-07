@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
 	"github.com/eddietindame/pgcheckpoint/internal/db"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -43,7 +45,7 @@ of the checkpoint file.`,
 			viper.GetString("db_name"),
 			viper.GetString("db_sslmode"),
 		)
-		fmt.Println("Database url:", url)
+		ui.Info("Database url:", url)
 
 		var target string
 		if len(args) > 0 {
@@ -62,9 +64,9 @@ of the checkpoint file.`,
 		}
 
 		if len(out) > 0 {
-			fmt.Printf("\n%s\n", out)
+			ui.Detail(out)
 		}
-		fmt.Println("Checkpoint restored:", restoredCheckpoint)
+		ui.Success("Checkpoint restored:", restoredCheckpoint)
 		return nil
 	},
 }

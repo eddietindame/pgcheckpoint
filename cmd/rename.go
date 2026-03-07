@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -38,7 +40,7 @@ Examples:
 			return fmt.Errorf("error renaming checkpoint: %w", err)
 		}
 
-		fmt.Printf("Renamed %s -> %s\n", args[0], newFilename)
+		ui.Success("Renamed", args[0]+" -> "+newFilename)
 		return nil
 	},
 }

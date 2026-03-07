@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/eddietindame/pgcheckpoint/internal/checkpoint"
+	"github.com/eddietindame/pgcheckpoint/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -27,11 +29,11 @@ indicating that none were found.`,
 		}
 
 		if len(files) == 0 {
-			fmt.Println("No checkpoints.")
+			ui.Warn("No checkpoints.")
 		}
 
 		for _, file := range files {
-			fmt.Println(file)
+			ui.ListItem(file)
 		}
 
 		return nil
