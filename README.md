@@ -90,6 +90,7 @@ If multiple checkpoints share the same short name, an error is returned.
 ### Flags
 
 ```
+    --db-url string         Full PostgreSQL connection URL (overrides individual db-* flags if set)
 -p, --port int              PostgreSQL port (default 5432)
     --db-user string        Database user (default "user")
     --db-password string    Database password (default "password")
@@ -103,6 +104,16 @@ If multiple checkpoints share the same short name, an error is returned.
 -j, --project-config string Project config file path
     --profile string        Config profile to use (default "default")
 ```
+
+### Connection URL
+
+Instead of supplying the individual `--db-*` flags, you can pass a full PostgreSQL URL:
+
+```sh
+pgcheckpoint --db-url "postgresql://user:pass@localhost:5432/mydb?sslmode=disable"
+```
+
+When `--db-url` (or `db_url` in config) is set, it takes precedence over the individual components.
 
 ## Configuration
 
@@ -141,11 +152,8 @@ checkpoint_dir: /path/to/checkpoints
 naming_mode: sequential # or "timestamp", "compact", "unix"
 
 staging:
-  db_user: staging_user
-  db_password: staging_secret
-  db_host: staging.example.com
-  db_name: myapp_staging
-  db_sslmode: require
+  # Single URL (overrides per-field values when set):
+  db_url: postgresql://staging_user:staging_secret@staging.example.com:5432/myapp_staging?sslmode=require
 ```
 
 Use the `--profile` flag to select a profile:

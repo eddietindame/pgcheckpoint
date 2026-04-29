@@ -73,6 +73,7 @@ var (
 	cfgFile        string
 	projectCfgFile string
 	profile        string
+	dbURL          string
 	port           int
 	dbUser         string
 	dbPassword     string
@@ -95,6 +96,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&namingMode, "naming-mode", "sequential", "Checkpoint naming mode (sequential, timestamp, compact, or unix)")
 	rootCmd.Flags().StringVarP(&checkpointName, "name", "n", "", "optional human-readable name for the checkpoint")
 
+	rootCmd.PersistentFlags().StringVar(&dbURL, "db-url", "", "Full PostgreSQL connection URL (overrides individual db-* flags if set)")
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5432, "Postgres port for database connection.")
 	rootCmd.PersistentFlags().StringVar(&dbUser, "db-user", "user", "Database user")
 	rootCmd.PersistentFlags().StringVar(&dbPassword, "db-password", "password",
@@ -105,6 +107,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show pg_dump/psql output")
 
 	// Bind flags to viper keys so config file values become flag defaults
+	viper.BindPFlag("db_url", rootCmd.PersistentFlags().Lookup("db-url"))
 	viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("port"))
 	viper.BindPFlag("db_user", rootCmd.PersistentFlags().Lookup("db-user"))
 	viper.BindPFlag("db_password", rootCmd.PersistentFlags().Lookup("db-password"))

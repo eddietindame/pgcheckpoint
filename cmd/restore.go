@@ -37,7 +37,8 @@ of the checkpoint file.`,
 			return fmt.Errorf("error: %v\n", err)
 		}
 
-		url := db.GetPgUrl(
+		url := db.ResolvePgUrl(
+			viper.GetString("db_url"),
 			viper.GetString("db_user"),
 			viper.GetString("db_password"),
 			viper.GetString("db_host"),
